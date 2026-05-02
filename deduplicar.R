@@ -4,10 +4,17 @@
 # ============================================================================
 #
 # QUÉ HACE:
-#   1. Agrupa álbumes por artista + nombre (case-insensitive)
+#   1. Agrupa álbumes por artista + nombre normalizado (case-insensitive)
 #   2. Si hay duplicados, conserva el que tiene más scrobbles
 #   3. Los demás se marcan con _duplicado_de = {id_ganador}
 #      y categoria = "descartado" (no se borran del caché — P1)
+#
+# MATCHING FUZZY (v5):
+#   El nombre del álbum se normaliza eliminando sufijos comunes que indican
+#   variantes del mismo disco: (Re-Issue), (Remaster), (Remastered),
+#   (Deluxe), (Deluxe Edition), (Expanded Edition), (Anniversary Edition),
+#   (Special Edition), (Bonus Track Version), etc.
+#   Así "No Control" y "No Control (Re-Issue)" se agrupan juntos.
 #
 # CUÁNDO CORRER: una vez, o después de agregar muchos discos nuevos.
 #   Después correr construir.R para regenerar el catálogo.
@@ -15,41 +22,81 @@
 # MODO: por defecto corre en modo diagnóstico (solo reporta).
 #   Cambiar APLICAR_CAMBIOS a TRUE para marcar los duplicados.
 #
+# REFACTOR v5:
+#   - Usa utils.R para leer_cache, guardar_cache y constantes
+#   - Matching fuzzy para detectar re-issues y variantes
+#   - escribir_json_atomico() eliminada (guardar_cache de utils.R la reemplaza)
+#
 # PAQUETES: install.packages(c("jsonlite", "cli", "here"))
 # ============================================================================
 
-library(jsonlite)
-library(cli)
-library(here)
+source(here::here("utils.R"))
 
 # --- Configuración -----------------------------------------------------------
-
-RUTA_CACHE <- here("datos", "music_cache.json")
 
 # Cambiar a TRUE para aplicar los cambios al caché
 APLICAR_CAMBIOS <- TRUE
 
+# Sufijos que se eliminan del nombre del álbum para agrupar variantes.
+# El orden no importa; se aplican todos.
+# Cada patrón se prueba entre paréntesis, corchetes o sin delimitadores al final.
+# Ejemplo: "No Control (Re-Issue)" → "No Control"
+#          "OK Computer OKNOTOK 1997 2017" no matchea (no tiene sufijo conocido)
+SUFIJOS_VARIANTE <- c(
+  "re-issue", "reissue", "re issue",
+  "remaster", "remastered",
+  "deluxe", "deluxe edition", "deluxe version",
+  "expanded edition", "expanded",
+  "special edition", "special",
+  "anniversary edition",
+  "\\d+th anniversary edition",   # 20th Anniversary Edition, etc.
+  "\\d+th anniversary",
+  "bonus track version", "bonus tracks version", "bonus tracks",
+  "super deluxe", "super deluxe edition",
+  "complete edition",
+  "legacy edition",
+  "collector'?s edition",
+  "international version",
+  "explicit"
+)
+
 # --- Funciones ---------------------------------------------------------------
 
-leer_cache <- function(ruta) {
-  if (!file.exists(ruta)) cli_abort("Caché no encontrado en {ruta}")
-  fromJSON(ruta, simplifyVector = FALSE)
+#' Normaliza el nombre de un álbum para comparación.
+#' Elimina sufijos de variantes (entre paréntesis, corchetes o sueltos al final),
+#' convierte a minúsculas, y limpia espacios.
+#'
+#' Analogía: es como quitar las etiquetas de "edición especial" de la carátula
+#' para ver si debajo es el mismo disco.
+#'
+#' @param nombre Nombre del álbum (character).
+#' @return Nombre normalizado (character).
+normalizar_nombre <- function(nombre) {
+  n <- trimws(tolower(nombre))
+
+  # Construir patrón regex: matchea cada sufijo entre (), [] o suelto al final
+  # Ejemplo: "(Re-Issue)" o "[Remastered]" o " - Remastered" o "Remastered"
+  for (sufijo in SUFIJOS_VARIANTE) {
+    # Entre paréntesis: "Album (Re-Issue)"
+    n <- gsub(paste0("\\s*\\(\\s*", sufijo, "\\s*\\)"), "", n, perl = TRUE)
+    # Entre corchetes: "Album [Remastered]"
+    n <- gsub(paste0("\\s*\\[\\s*", sufijo, "\\s*\\]"), "", n, perl = TRUE)
+    # Con guión: "Album - Remastered"
+    n <- gsub(paste0("\\s*-\\s*", sufijo, "\\s*$"), "", n, perl = TRUE)
+  }
+
+  # Limpiar espacios múltiples y trailing
+  trimws(gsub("\\s+", " ", n))
 }
 
-escribir_json_atomico <- function(data, ruta, ...) {
-  tmp <- paste0(ruta, ".tmp")
-  write_json(data, tmp, ...)
-  file.rename(tmp, ruta)
-}
-
-# Clave de agrupación: artista + album en minúsculas, sin espacios extra
+#' Clave de agrupación: artista + album normalizado
 clave_album <- function(entry) {
   artista <- trimws(tolower(entry$artista %||% ""))
-  album   <- trimws(tolower(entry$album %||% ""))
+  album   <- normalizar_nombre(entry$album %||% "")
   paste(artista, album, sep = " — ")
 }
 
-# Scrobbles del álbum (para decidir cuál conservar)
+#' Scrobbles del álbum (para decidir cuál conservar)
 get_scrobbles <- function(entry) {
   entry$lastfm$scrobbles_totales %||% 0L
 }
@@ -59,7 +106,7 @@ get_scrobbles <- function(entry) {
 main <- function() {
   cli_h1("Discoteca — Deduplicar álbumes")
 
-  cache <- leer_cache(RUTA_CACHE)
+  cache <- leer_cache()
   keys <- names(cache$albumes)
   cli_alert_info("Álbumes en caché: {length(keys)}")
 
@@ -71,7 +118,7 @@ main <- function() {
     cli_alert_info("Ya marcados como duplicados: {ya_marcados}")
   }
 
-  # Agrupar por clave
+  # Agrupar por clave (con normalización fuzzy)
   grupos <- list()
   for (k in keys) {
     entry <- cache$albumes[[k]]
@@ -111,7 +158,7 @@ main <- function() {
 
     # Reportar
     cli_text(cli::col_cyan(cl))
-    cli_text("  {cli::col_green('✓')} {ganador$key} ({scrobbles[1]} scrobbles) — conservar")
+    cli_text("  {cli::col_green('\u2713')} {ganador$entry$album} [{ganador$key}] ({scrobbles[1]} scrobbles) — conservar")
     for (i in seq_along(perdedores)) {
       p <- perdedores[[i]]
       s <- scrobbles[i + 1]
@@ -123,9 +170,13 @@ main <- function() {
       diferencias <- c()
       if (anio_g != anio_p) diferencias <- c(diferencias, paste0("año: ", anio_p, " vs ", anio_g))
       if (tracks_g != tracks_p) diferencias <- c(diferencias, paste0("tracks: ", tracks_p, " vs ", tracks_g))
+      # Mostrar el nombre original si difiere del ganador (útil para ver qué sufijo se normalizó)
+      if (tolower(p$entry$album) != tolower(ganador$entry$album)) {
+        diferencias <- c(diferencias, paste0("nombre: \"", p$entry$album, "\""))
+      }
       dif_str <- if (length(diferencias) > 0) paste0(" [", paste(diferencias, collapse = ", "), "]") else ""
 
-      cli_text("  {cli::col_red('×')} {p$key} ({s} scrobbles){dif_str} — descartar")
+      cli_text("  {cli::col_red('\u00d7')} {p$entry$album} [{p$key}] ({s} scrobbles){dif_str} — descartar")
     }
 
     decisiones <- c(decisiones, list(list(
@@ -160,9 +211,8 @@ main <- function() {
     }
   }
 
-  # Guardar caché (P4 — escritura atómica)
-  cache$`_meta`$ultima_actualizacion <- format(Sys.time(), "%Y-%m-%dT%H:%M:%S")
-  escribir_json_atomico(cache, RUTA_CACHE, pretty = TRUE, auto_unbox = TRUE)
+  # Guardar caché (P4 — escritura atómica vía utils.R)
+  guardar_cache(cache)
 
   cli_alert_success("{n_marcados} álbumes marcados como duplicados")
   cli_alert_info("Corre construir.R para regenerar el catálogo")

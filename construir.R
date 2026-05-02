@@ -11,29 +11,18 @@
 # CUÁNDO CORRER: después de spotify.R, lastfm.R, musicbrainz.R,
 #   o después de importar ediciones desde la web.
 #
+# REFACTOR v5:
+#   - Usa utils.R para leer_cache, guardar_cache, guardar_json, guardar_csv,
+#     safe_str, safe_num, colapsar, y todas las constantes
+#   - escribir_json_atomico() eliminada (reemplazada por guardar_json de utils.R)
+#   - Bug del NA corregido: safe_str(NA) ahora devuelve "" en vez de "NA"
+#
 # PAQUETES: install.packages(c("jsonlite", "cli", "here"))
 # ============================================================================
 
-library(jsonlite)
-library(cli)
-library(here)
+source(here::here("utils.R"))
 
-# --- Configuración (P11 — constantes parametrizadas) -------------------------
-
-RUTA_CACHE    <- here("datos", "music_cache.json")
-RUTA_CATALOGO <- here("datos", "catalogo.json")
-RUTA_CSV      <- here("datos", "catalogo_musica.csv")
-RUTA_WEB_EDIT <- here("datos", "ediciones_web.json")
-
-# Categorías válidas (debe coincidir con utils.R y el frontend)
-CATEGORIAS_VALIDAS <- c("good", "great", "masterpiece", "descartado")
-
-# --- Funciones --------------------------------------------------------------
-
-leer_cache <- function(ruta) {
-  if (!file.exists(ruta)) cli_abort("Caché no encontrado en {ruta}")
-  fromJSON(ruta, simplifyVector = FALSE)
-}
+# --- Funciones propias de construir.R ---------------------------------------
 
 # Migración: rating/favorito → categoria (P11 — lógica centralizada)
 # Si el álbum ya tiene categoria, no se toca.
@@ -119,15 +108,15 @@ aplanar_album <- function(key, entry) {
         anio               = entry$anio %||% 0L,
         fecha_lanzamiento  = entry$fecha_lanzamiento %||% "",
         fecha_precision    = entry$fecha_precision %||% "year",
-        sello              = entry$musicbrainz$sello %||% NA,
-        pais               = entry$musicbrainz$pais %||% NA,
+        sello              = entry$musicbrainz$sello %||% "",
+        pais               = entry$musicbrainz$pais %||% "",
         num_tracks         = entry$num_tracks %||% 0L,
         duracion_total_min = entry$duracion_total_min %||% 0,
         artwork_url        = entry$artwork_url %||% "",
         spotify_url        = spotify_url,
         generos            = entry$generos %||% list(),
         scrobbles          = entry$lastfm$scrobbles_totales %||% 0L,
-        primer_scrobble    = entry$lastfm$primer_scrobble %||% NA,
+        primer_scrobble    = entry$lastfm$primer_scrobble %||% "",
         tags_lastfm        = entry$lastfm$tags_lastfm %||% list(),
         categoria          = personal$categoria,
         notas              = personal$notas %||% "",
@@ -146,39 +135,12 @@ aplanar_album <- function(key, entry) {
   )
 }
 
-# Colapsar listas a string para CSV (P9 — tolerante a NULL, NA, character(0))
-colapsar <- function(x) {
-  if (is.null(x) || length(x) == 0) return("")
-  vals <- unlist(x)
-  if (length(vals) == 0) return("")
-  paste(vals, collapse = "; ")
-}
-
-# Extracción segura para CSV — siempre devuelve un escalar del tipo correcto
-safe_str <- function(x) {
-  if (is.null(x) || length(x) == 0) return("")
-  as.character(x[[1]])
-}
-
-safe_num <- function(x, default = 0) {
-  if (is.null(x) || length(x) == 0) return(default)
-  as.numeric(x[[1]])
-}
-
-# Escritura atómica: write-to-temp → rename (P4)
-# Si el proceso se interrumpe, el archivo original queda intacto
-escribir_json_atomico <- function(data, ruta, ...) {
-  tmp <- paste0(ruta, ".tmp")
-  write_json(data, tmp, ...)
-  file.rename(tmp, ruta)
-}
-
 # --- Main -------------------------------------------------------------------
 
 main <- function() {
   cli_h1("Discoteca — Construir catálogo")
 
-  cache <- leer_cache(RUTA_CACHE)
+  cache <- leer_cache()
   cli_alert_info("Álbumes en caché: {length(cache$albumes)}")
 
   cache <- importar_ediciones_web(cache, RUTA_WEB_EDIT)
@@ -197,14 +159,12 @@ main <- function() {
   cli_alert_info("Álbumes en catálogo: {length(catalogo)}")
 
   # --- JSON para la web (P4 — escritura atómica, P10 — auto_unbox) -----------
-  escribir_json_atomico(catalogo, RUTA_CATALOGO, pretty = TRUE, auto_unbox = TRUE)
+  guardar_json(catalogo, RUTA_CATALOGO, pretty = TRUE, auto_unbox = TRUE)
   cli_alert_success("catalogo.json → {length(catalogo)} álbumes")
 
-  # --- CSV para Excel/R (fix: vapply con tipo fijo para evitar sapply bugs) ---
+  # --- CSV para Excel/R (vapply con tipo fijo para evitar sapply bugs) --------
   tryCatch(
     {
-      n <- length(catalogo)
-
       df <- data.frame(
         id                 = vapply(catalogo, \(x) safe_str(x$id),                 character(1)),
         artista            = vapply(catalogo, \(x) safe_str(x$artista),             character(1)),
@@ -227,7 +187,7 @@ main <- function() {
         fecha_agregado     = vapply(catalogo, \(x) safe_str(x$fecha_agregado),      character(1)),
         stringsAsFactors   = FALSE
       )
-      write.csv(df, RUTA_CSV, row.names = FALSE, fileEncoding = "UTF-8")
+      guardar_csv(df, RUTA_CSV)
       cli_alert_success("catalogo_musica.csv → {nrow(df)} filas")
     },
     error = function(e) {
@@ -237,15 +197,12 @@ main <- function() {
   )
 
   # Guardar caché actualizado (P4 — escritura atómica)
-  cache$`_meta`$ultima_actualizacion <- format(Sys.time(), "%Y-%m-%dT%H:%M:%S")
-  escribir_json_atomico(cache, RUTA_CACHE, pretty = TRUE, auto_unbox = TRUE)
+  guardar_cache(cache)
 
   # --- Reporte ---------------------------------------------------------------
   cli_h2("Resumen")
   n_scrobbles  <- sum(vapply(catalogo, \(x) safe_num(x$scrobbles) > 0, logical(1)))
-  n_sello      <- sum(vapply(catalogo, \(x) {
-    s <- x$sello; !is.null(s) && !is.na(s) && s != ""
-  }, logical(1)))
+  n_sello      <- sum(vapply(catalogo, \(x) safe_str(x$sello) != "", logical(1)))
   n_fecha      <- sum(vapply(catalogo, \(x) identical(x$fecha_precision, "day"), logical(1)))
   n_cat        <- sum(vapply(catalogo, \(x) !is.null(x$categoria), logical(1)))
   n_master     <- sum(vapply(catalogo, \(x) identical(x$categoria, "masterpiece"), logical(1)))

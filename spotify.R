@@ -14,45 +14,16 @@
 #   - Si se interrumpe, el progreso queda guardado en disco.
 #   - Redirect URI: http://127.0.0.1:1410/
 #
-# PAQUETES: install.packages(c("httr2", "jsonlite", "cli"))
+# REFACTOR v5:
+#   - leer_cache() y guardar_cache() ahora vienen de utils.R
+#   - Constantes (RUTA_CACHE, SPOTIFY_BASE, PAGE_SIZE) vienen de utils.R
+#   - guardar_cache() ahora usa escritura atómica (P4) — antes no la tenía
+#
+# PAQUETES: install.packages(c("httr2", "jsonlite", "cli", "here"))
 # ============================================================================
 
 library(httr2)
-library(jsonlite)
-library(cli)
-
-# --- Configuración ----------------------------------------------------------
-
-RUTA_CACHE   <- file.path("datos", "music_cache.json")
-SPOTIFY_BASE <- "https://api.spotify.com/v1"
-PAGE_SIZE    <- 50
-
-# --- Funciones de caché -----------------------------------------------------
-
-leer_cache <- function(ruta) {
-  if (file.exists(ruta)) {
-    cache <- fromJSON(ruta, simplifyVector = FALSE)
-    cli_alert_info("Caché existente: {length(cache$albumes)} álbumes")
-    return(cache)
-  }
-  cli_alert_warning("No se encontró caché, creando uno nuevo")
-  list(
-    `_meta` = list(
-      version = "2.0",
-      descripcion = "Caché permanente — solo se agregan datos, nunca se borran",
-      ultima_actualizacion = format(Sys.time(), "%Y-%m-%dT%H:%M:%S"),
-      fuentes = list("spotify", "lastfm", "musicbrainz")
-    ),
-    albumes = list()
-  )
-}
-
-# Guardado silencioso (no imprime cada vez)
-guardar_cache <- function(cache, ruta) {
-  cache$`_meta`$ultima_actualizacion <- format(Sys.time(), "%Y-%m-%dT%H:%M:%S")
-  dir.create(dirname(ruta), showWarnings = FALSE, recursive = TRUE)
-  write_json(cache, ruta, pretty = TRUE, auto_unbox = TRUE)
-}
+source(here::here("utils.R"))
 
 # --- Autenticación ----------------------------------------------------------
 
@@ -78,7 +49,7 @@ obtener_token_spotify <- function() {
     client = cliente,
     auth_url = "https://accounts.spotify.com/authorize",
     scope = "user-library-read",
-    redirect_uri = "http://127.0.0.1:1410/"
+    redirect_uri = SPOTIFY_REDIRECT
   )
 
   cli_alert_success("Autenticación exitosa con Spotify")
@@ -87,7 +58,7 @@ obtener_token_spotify <- function() {
 
 # --- HTTP -------------------------------------------------------------------
 
-spotify_get <- function(url, token, max_reintentos = 3) {
+spotify_get <- function(url, token, max_reintentos = HTTP_MAX_RETRIES) {
   for (intento in seq_len(max_reintentos)) {
     resp <- tryCatch(
       request(url) |>
@@ -108,7 +79,7 @@ spotify_get <- function(url, token, max_reintentos = 3) {
 
     if (status == 429) {
       espera <- as.numeric(resp_header(resp, "Retry-After") %||% "5")
-      if (espera > 300) {
+      if (espera > SPOTIFY_RATE_LIMIT_MAX_WAIT) {
         cli_alert_danger("Rate limit severo: Spotify pide esperar {round(espera/3600, 1)} horas")
         cli_alert_info("Progreso guardado. Corre el script de nuevo más tarde.")
         return("RATE_LIMITED")
@@ -140,7 +111,7 @@ descargar_albumes_guardados <- function(token) {
   cli_alert_info("Descargando álbumes guardados de Spotify...")
 
   repeat {
-    url  <- paste0(SPOTIFY_BASE, "/me/albums?limit=", PAGE_SIZE, "&offset=", offset)
+    url  <- paste0(SPOTIFY_BASE, "/me/albums?limit=", SPOTIFY_PAGE_SIZE, "&offset=", offset)
     data <- spotify_get(url, token)
 
     if (identical(data, "RATE_LIMITED")) {
@@ -157,7 +128,7 @@ descargar_albumes_guardados <- function(token) {
     if (length(data$items) == 0) break
 
     albumes <- c(albumes, data$items)
-    offset  <- offset + PAGE_SIZE
+    offset  <- offset + SPOTIFY_PAGE_SIZE
     cli_alert("  Descargados: {length(albumes)} / {total}")
 
     if (is.null(data$`next`)) break
@@ -183,7 +154,7 @@ procesar_album <- function(item) {
   # Duración total en minutos
   duracion_ms <- 0
   if (!is.null(album$tracks) && !is.null(album$tracks$items)) {
-    duracion_ms <- sum(sapply(album$tracks$items, \(t) t$duration_ms %||% 0))
+    duracion_ms <- sum(vapply(album$tracks$items, \(t) t$duration_ms %||% 0, numeric(1)))
   }
 
   list(
@@ -201,7 +172,7 @@ procesar_album <- function(item) {
     lastfm             = list(),
     musicbrainz        = list(),
     personal           = list(
-      rating = 0L, favorito = FALSE, notas = "",
+      categoria = NULL, notas = "",
       tags_propios = list(), fecha_agregado = format(Sys.Date())
     )
   )
@@ -212,7 +183,7 @@ procesar_album <- function(item) {
 main <- function() {
   cli_h1("Discoteca — Importar desde Spotify")
 
-  cache <- leer_cache(RUTA_CACHE)
+  cache <- leer_cache()
   ids_existentes <- names(cache$albumes)
   token <- obtener_token_spotify()
   items <- descargar_albumes_guardados(token)
@@ -222,6 +193,7 @@ main <- function() {
     return(invisible(NULL))
   }
 
+  inicio <- Sys.time()
   nuevos <- 0; saltados <- 0; errores <- 0
 
   for (item in items) {
@@ -239,12 +211,13 @@ main <- function() {
     cache$albumes[[cache_key]] <- resultado
     ids_existentes <- c(ids_existentes, cache_key)
     nuevos <- nuevos + 1
-    guardar_cache(cache, RUTA_CACHE)
+    guardar_cache(cache)
     cli_alert_success("  [{nuevos}] {resultado$artista} — {resultado$album} ({resultado$anio})")
   }
 
   cli_h2("Resumen")
   cli_alert_info("Nuevos: {nuevos} | Saltados: {saltados} | Errores: {errores} | Total: {length(cache$albumes)}")
+  reportar_tiempo(inicio)
 }
 
 main()

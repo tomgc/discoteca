@@ -310,6 +310,15 @@ header p {
 }
 .modal-wiki-link:hover { text-decoration: underline; }
 
+/* --- TRACKLIST EMBED --- */
+.modal-tracklist-embed {
+  border-radius: 4px;
+  overflow: hidden;
+}
+.modal-tracklist-embed iframe {
+  display: block;
+}
+
 /* --- LISTEN TODAY --- */
 .listen-today {
   margin-bottom: 1.5rem;
@@ -685,6 +694,166 @@ header p {
 }
 .empty p { font-size: 0.9rem; margin-top: 0.5rem; }
 
+/* --- TRIAGE MODE --- */
+.triage-bar {
+  display: none;
+  padding: 0.6rem 2rem;
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+  gap: 1rem;
+  background: linear-gradient(135deg, rgba(201,168,76,0.04) 0%, transparent 60%), var(--surface);
+}
+.triage-bar.active { display: flex; }
+.triage-bar-title {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.triage-bar-counter {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  font-weight: 300;
+}
+.triage-bar-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+.triage-cat-btn {
+  background: var(--tag-bg);
+  border: 1px solid var(--tag-border);
+  color: var(--text-dim);
+  padding: 0.4rem 0.8rem;
+  border-radius: 3px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  font-family: var(--font-body);
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  white-space: nowrap;
+}
+.triage-cat-btn:hover {
+  border-color: var(--accent-dim);
+  color: var(--text);
+}
+.triage-cat-btn .shortcut {
+  font-size: 0.6rem;
+  color: var(--text-dim);
+  opacity: 0.6;
+  font-family: monospace;
+  background: rgba(255,255,255,0.06);
+  padding: 0.1rem 0.3rem;
+  border-radius: 2px;
+}
+.triage-cat-btn.dismiss { color: var(--text-dim); }
+.triage-cat-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+.triage-nav-btn {
+  background: transparent;
+  border: 1px solid var(--accent-dim);
+  color: var(--accent);
+  padding: 0.4rem 0.8rem;
+  border-radius: 3px;
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.triage-nav-btn:hover { background: var(--accent-dim); color: var(--bg); }
+.triage-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+.triage-grid {
+  display: none;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 1.2rem;
+  padding: 1.5rem 2rem 3rem;
+}
+.triage-grid.active { display: grid; }
+.triage-card {
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  position: relative;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  padding: 4px;
+}
+.triage-card:hover { transform: translateY(-3px); }
+.triage-card.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 12px rgba(201,168,76,0.2);
+}
+.triage-card.classified { opacity: 0.5; }
+.triage-card.classified:hover { opacity: 0.7; }
+.triage-card-art {
+  aspect-ratio: 1;
+  background: var(--surface);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+.triage-card-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.triage-card-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: rgba(0,0,0,0.7);
+  color: var(--accent);
+  font-size: 0.7rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 2px;
+  font-family: var(--font-body);
+}
+.triage-card-info {
+  padding: 0.4rem 0.15rem 0;
+}
+.triage-card-artist {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.triage-card-album {
+  font-family: var(--font-display);
+  font-size: 0.88rem;
+  font-weight: 400;
+  margin-top: 0.1rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.btn-triage {
+  background: transparent;
+  border: 1px solid var(--accent-dim);
+  color: var(--accent);
+  padding: 0.45rem 0.9rem;
+  border-radius: 3px;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-triage:hover { background: var(--accent-dim); color: var(--bg); }
+
 /* --- RESPONSIVE --- */
 @media (max-width: 768px) {
   header h1 { font-size: 0.95rem; }
@@ -696,6 +865,10 @@ header p {
   .feature-art { width: 100%; height: 200px; }
   .releases-bar { padding: 0.5rem 1rem; }
   .release-bar-item-album { max-width: 120px; }
+  .triage-bar { flex-wrap: wrap; padding: 0.5rem 1rem; gap: 0.5rem; }
+  .triage-bar-actions { margin-left: 0; flex-wrap: wrap; }
+  .triage-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.8rem; padding: 1rem; }
+  .triage-cat-btn .shortcut { display: none; }
 }
 </style>
 </head>
@@ -718,6 +891,7 @@ header p {
   </div>
   <span class="counter" id="counter"></span>
   <div class="toolbar-right">
+    <button class="btn-triage" id="btn-triage" title="Quick classify unrated albums" style="display:none">Triage</button>
     <button class="btn-export" id="btn-export" title="Export personal edits as JSON">Export JSON</button>
   </div>
 </div>
@@ -733,8 +907,24 @@ header p {
   <div class="releases-bar-items" id="releases-bar-items"></div>
 </div>
 
+<!-- TRIAGE MODE -->
+<div class="triage-bar" id="triage-bar">
+  <span class="triage-bar-title">Triage</span>
+  <span class="triage-bar-counter" id="triage-counter"></span>
+  <div class="triage-bar-actions">
+    <button class="triage-cat-btn" data-cat="good" disabled>○ Good <span class="shortcut">1</span></button>
+    <button class="triage-cat-btn" data-cat="great" disabled>● Great <span class="shortcut">2</span></button>
+    <button class="triage-cat-btn" data-cat="masterpiece" disabled>◆ Masterpiece <span class="shortcut">3</span></button>
+    <button class="triage-cat-btn dismiss" data-cat="descartado" disabled>× Dismiss <span class="shortcut">X</span></button>
+    <div class="triage-divider"></div>
+    <button class="triage-nav-btn" id="triage-next">Next batch →</button>
+    <button class="triage-nav-btn" id="triage-exit">Exit</button>
+  </div>
+</div>
+<div class="triage-grid" id="triage-grid"></div>
+
 <!-- LAYOUT PRINCIPAL: columna única -->
-<div class="main-layout">
+<div class="main-layout" id="main-layout">
 
   <main class="content">
 
@@ -780,6 +970,11 @@ header p {
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.6 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
         Open in Spotify
       </a>
+
+      <div class="modal-section" id="section-tracklist" style="display:none">
+        <h3>Tracklist</h3>
+        <div id="modal-tracklist"></div>
+      </div>
 
       <div class="modal-section" id="section-wikipedia" style="display:none">
         <h3>About this album</h3>
@@ -970,6 +1165,23 @@ async function load() {
   // Migrar datos del catálogo si vienen con formato viejo
   catalogo.forEach(a => migrateToCategory(a));
 
+  // Normalizar campos: jsonlite serializa NULL como {} (objeto vacío).
+  // Lo convertimos a null/vacío para que el frontend lo trate uniformemente.
+  // Afecta: categoria, primer_scrobble, sello, pais, notas, wikipedia_extract, wikipedia_url
+  let normalizadas = 0;
+  catalogo.forEach(a => {
+    ['categoria', 'primer_scrobble', 'sello', 'pais', 'notas',
+     'wikipedia_extract', 'wikipedia_url', 'fecha_lanzamiento'].forEach(campo => {
+      if (a[campo] && typeof a[campo] === 'object') {
+        a[campo] = (campo === 'categoria') ? null : '';
+        normalizadas++;
+      }
+    });
+  });
+  if (normalizadas > 0) {
+    log(`Normalizados ${normalizadas} campos ({} → null/vacío)`);
+  }
+
   // Cargar ediciones de localStorage (P9 — con protección)
   const raw = safeGetItem(CONFIG.storageKey);
   if (raw) {
@@ -1014,6 +1226,7 @@ async function load() {
   renderFeature();
   renderListenToday();
   initCalendar();
+  updateTriageButton();
 }
 
 // --- FILTROS ---------------------------------------------------------------
@@ -1165,7 +1378,27 @@ function openModal(id) {
     spotifyLink.style.display = 'none';
   }
 
-  // Wikipedia (solo para masterpieces con extracto)
+  // Tracklist via Spotify embed
+  // Extrae el album ID de la URL (https://open.spotify.com/album/{id})
+  // y carga un iframe embed compacto que muestra la lista de tracks
+  const tracklistSection = document.getElementById('section-tracklist');
+  const tracklistContainer = document.getElementById('modal-tracklist');
+  const spotifyId = a.spotify_url ? a.spotify_url.split('/album/')[1] : '';
+  if (spotifyId) {
+    tracklistContainer.innerHTML =
+      `<div class="modal-tracklist-embed">
+        <iframe src="https://open.spotify.com/embed/album/${spotifyId}?theme=0"
+          width="100%" height="352" frameborder="0"
+          allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+          loading="lazy"></iframe>
+      </div>`;
+    tracklistSection.style.display = 'block';
+  } else {
+    tracklistContainer.innerHTML = '';
+    tracklistSection.style.display = 'none';
+  }
+
+  // Wikipedia (para álbumes great/masterpiece con extracto)
   const wikiSection = document.getElementById('section-wikipedia');
   if (a.wikipedia_extract && a.wikipedia_extract.length > 0) {
     document.getElementById('modal-wikipedia').textContent = a.wikipedia_extract;
@@ -1241,6 +1474,12 @@ function closeModal() {
   currentId = null;
   document.getElementById('modal-overlay').classList.remove('open');
   document.body.style.overflow = '';
+
+  // Si estamos en triage, refrescar el batch (pudo haberse clasificado desde el modal)
+  if (triageActive) {
+    renderTriageBatch();
+    updateTriageCounter();
+  }
 }
 
 function renderOwnTags(tags) {
@@ -1484,6 +1723,265 @@ document.addEventListener('keydown', (e) => {
 
 document.getElementById('modal-tags-input').addEventListener('keydown', addTag);
 document.getElementById('btn-export').addEventListener('click', exportJSON);
+
+// ============================================================================
+// TRIAGE MODE — Clasificación rápida de álbumes
+// ============================================================================
+// Muestra lotes de 8 discos sin clasificar. Click para seleccionar,
+// luego asignar categoría con botones o atajos de teclado:
+//   1 = Good, 2 = Great, 3 = Masterpiece, X = Dismiss, S = Skip
+//   → = Next batch, Esc = Exit triage
+// ============================================================================
+
+const TRIAGE = {
+  batchSize: 10,
+  keyMap: {
+    '1': 'good',
+    '2': 'great',
+    '3': 'masterpiece',
+    'x': 'descartado',
+  }
+};
+
+let triageActive = false;
+let triagePool = [];      // todos los álbumes sin clasificar
+let triageOffset = 0;     // posición actual en el pool
+let triageBatch = [];     // lote actual (máx 8)
+let triageSelected = null; // id del álbum seleccionado
+
+function getUnclassified() {
+  return catalogo.filter(a => {
+    // jsonlite serializa NULL como {} (objeto vacío) — no es un string válido
+    const cat = a.categoria;
+    if (!cat) return true;                          // null, undefined, ""
+    if (typeof cat === 'object') return true;        // {} de jsonlite
+    if (!VALID_CATEGORIES.includes(cat)) return true; // valor inválido
+    return false;
+  });
+}
+
+function enterTriage() {
+  triageActive = true;
+  triagePool = getUnclassified();
+  triageOffset = 0;
+  triageSelected = null;
+
+  if (triagePool.length === 0) {
+    warn('No hay álbumes sin clasificar');
+    triageActive = false;
+    return;
+  }
+
+  // Ocultar vista normal, mostrar triage
+  document.getElementById('main-layout').style.display = 'none';
+  document.getElementById('releases-bar').style.display = 'none';
+  document.getElementById('triage-bar').classList.add('active');
+  document.getElementById('triage-grid').classList.add('active');
+
+  log(`Triage iniciado: ${triagePool.length} álbumes sin clasificar`);
+  loadTriageBatch();
+}
+
+function exitTriage() {
+  triageActive = false;
+  triageSelected = null;
+
+  // Restaurar vista normal
+  document.getElementById('triage-bar').classList.remove('active');
+  document.getElementById('triage-grid').classList.remove('active');
+  document.getElementById('main-layout').style.display = '';
+  document.getElementById('releases-bar').style.display = '';
+
+  // Re-renderizar la grilla principal con las clasificaciones aplicadas
+  render();
+  renderFeature();
+  updateTriageButton();
+}
+
+function loadTriageBatch() {
+  // Recalcular pool (algunos pueden haberse clasificado)
+  triagePool = getUnclassified();
+  triageBatch = triagePool.slice(triageOffset, triageOffset + TRIAGE.batchSize);
+
+  // Si no quedan más, volver al inicio o salir
+  if (triageBatch.length === 0) {
+    if (triageOffset > 0) {
+      // Hay más al inicio (se clasificaron algunos, el pool se contrajo)
+      triageOffset = 0;
+      triagePool = getUnclassified();
+      triageBatch = triagePool.slice(0, TRIAGE.batchSize);
+    }
+    if (triageBatch.length === 0) {
+      exitTriage();
+      return;
+    }
+  }
+
+  triageSelected = null;
+  renderTriageBatch();
+  updateTriageCounter();
+  updateTriageCatButtons();
+}
+
+function nextTriageBatch() {
+  triageOffset += TRIAGE.batchSize;
+  // Recalcular pool por si se clasificaron algunos
+  triagePool = getUnclassified();
+  if (triageOffset >= triagePool.length) triageOffset = 0;
+  loadTriageBatch();
+}
+
+function renderTriageBatch() {
+  const grid = document.getElementById('triage-grid');
+
+  grid.innerHTML = triageBatch.map(a => {
+    const classified = a.categoria ? ' classified' : '';
+    const badge = a.categoria && CATEGORIES[a.categoria]
+      ? `<span class="triage-card-badge">${CATEGORIES[a.categoria].icon} ${CATEGORIES[a.categoria].label}</span>`
+      : '';
+
+    return `
+    <div class="triage-card${classified}" data-id="${a.id}">
+      <div class="triage-card-art">
+        ${a.artwork_url
+          ? `<img src="${a.artwork_url}" alt="${escapeHtml(a.album)}" loading="lazy">`
+          : `<div class="placeholder" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:2.5rem;color:var(--accent-dim)">${escapeHtml(a.album.charAt(0))}</div>`
+        }
+        ${badge}
+      </div>
+      <div class="triage-card-info">
+        <div class="triage-card-artist">${escapeHtml(a.artista)}</div>
+        <div class="triage-card-album">${escapeHtml(a.album)}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Click para seleccionar, doble-click para abrir modal (ver tracklist, etc.)
+  grid.querySelectorAll('.triage-card').forEach(card => {
+    card.addEventListener('click', () => selectTriageCard(card.dataset.id));
+    card.addEventListener('dblclick', () => openModal(card.dataset.id));
+  });
+}
+
+function selectTriageCard(id) {
+  // Si clickeas el mismo, deseleccionar
+  if (triageSelected === id) {
+    triageSelected = null;
+  } else {
+    triageSelected = id;
+  }
+
+  // Actualizar visual
+  document.querySelectorAll('.triage-card').forEach(card => {
+    card.classList.toggle('selected', card.dataset.id === triageSelected);
+  });
+
+  updateTriageCatButtons();
+}
+
+function triageClassify(cat) {
+  if (!triageSelected) return;
+
+  const a = catalogo.find(x => x.id === triageSelected);
+  if (!a) return;
+
+  // Toggle: si ya tiene esta categoría, desclasificar
+  a.categoria = (a.categoria === cat) ? null : cat;
+  saveEdit(triageSelected, 'categoria', a.categoria);
+
+  // Actualizar la card visualmente
+  const card = document.querySelector(`.triage-card[data-id="${triageSelected}"]`);
+  if (card) {
+    if (a.categoria) {
+      card.classList.add('classified');
+      const badge = card.querySelector('.triage-card-badge');
+      const c = CATEGORIES[a.categoria];
+      if (badge) {
+        badge.textContent = `${c.icon} ${c.label}`;
+      } else {
+        const art = card.querySelector('.triage-card-art');
+        art.insertAdjacentHTML('beforeend', `<span class="triage-card-badge">${c.icon} ${c.label}</span>`);
+      }
+    } else {
+      card.classList.remove('classified');
+      const badge = card.querySelector('.triage-card-badge');
+      if (badge) badge.remove();
+    }
+  }
+
+  // Auto-avanzar: seleccionar el siguiente sin clasificar
+  const currentIdx = triageBatch.findIndex(x => x.id === triageSelected);
+  triageSelected = null;
+  card?.classList.remove('selected');
+
+  // Buscar siguiente sin clasificar en el batch
+  for (let i = currentIdx + 1; i < triageBatch.length; i++) {
+    if (!triageBatch[i].categoria) {
+      selectTriageCard(triageBatch[i].id);
+      break;
+    }
+  }
+
+  updateTriageCounter();
+  updateTriageCatButtons();
+}
+
+function updateTriageCounter() {
+  const remaining = getUnclassified().length;
+  const classified = triageBatch.filter(a => a.categoria).length;
+  document.getElementById('triage-counter').textContent =
+    `${classified}/${triageBatch.length} this batch · ${remaining} remaining`;
+}
+
+function updateTriageCatButtons() {
+  const enabled = triageSelected !== null;
+  document.querySelectorAll('.triage-cat-btn').forEach(btn => {
+    btn.disabled = !enabled;
+  });
+}
+
+function updateTriageButton() {
+  const btn = document.getElementById('btn-triage');
+  const unclassified = getUnclassified().length;
+  btn.style.display = unclassified > 0 ? '' : 'none';
+  btn.textContent = `Triage (${unclassified})`;
+}
+
+// Eventos del triage
+document.getElementById('btn-triage').addEventListener('click', enterTriage);
+document.getElementById('triage-exit').addEventListener('click', exitTriage);
+document.getElementById('triage-next').addEventListener('click', nextTriageBatch);
+
+// Botones de categoría en la barra de triage
+document.querySelectorAll('.triage-cat-btn').forEach(btn => {
+  btn.addEventListener('click', () => triageClassify(btn.dataset.cat));
+});
+
+// Atajos de teclado (solo cuando triage está activo y modal cerrado)
+document.addEventListener('keydown', (e) => {
+  if (!triageActive) return;
+  // No interferir con modal o inputs
+  if (document.getElementById('modal-overlay').classList.contains('open')) return;
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+  const key = e.key.toLowerCase();
+
+  if (TRIAGE.keyMap[key]) {
+    e.preventDefault();
+    triageClassify(TRIAGE.keyMap[key]);
+  } else if (key === 's') {
+    e.preventDefault();
+    triageSelected = null;
+    document.querySelectorAll('.triage-card').forEach(c => c.classList.remove('selected'));
+    updateTriageCatButtons();
+  } else if (key === 'arrowright') {
+    e.preventDefault();
+    nextTriageBatch();
+  } else if (key === 'escape') {
+    e.preventDefault();
+    exitTriage();
+  }
+});
 
 // ============================================================================
 // RELEASES BAR — Barra horizontal con releases del mes

@@ -14,36 +14,20 @@
 #   - ~3 requests por álbum = ~60 min para 1375 álbumes.
 #   - Si se interrumpe, el progreso queda guardado.
 #
-# PAQUETES: install.packages(c("httr2", "jsonlite", "cli"))
+# REFACTOR v5:
+#   - leer_cache() y guardar_cache() ahora vienen de utils.R
+#   - Constantes (RUTA_CACHE, MB_BASE, etc.) vienen de utils.R
+#   - guardar_cache() ahora usa escritura atómica (P4) — antes no la tenía
+#
+# PAQUETES: install.packages(c("httr2", "jsonlite", "cli", "here"))
 # ============================================================================
 
 library(httr2)
-library(jsonlite)
-library(cli)
-
-# --- Configuración ----------------------------------------------------------
-
-RUTA_CACHE    <- file.path("datos", "music_cache.json")
-MB_BASE       <- "https://musicbrainz.org/ws/2"
-CAA_BASE      <- "https://coverartarchive.org"
-MB_USER_AGENT <- "Discoteca/1.0 (https://github.com/tomgc/discoteca)"
-MAX_RELEASES  <- 3  # Máximo de releases a probar para sello/país
-
-# --- Funciones de caché -----------------------------------------------------
-
-leer_cache <- function(ruta) {
-  if (!file.exists(ruta)) cli_abort("Caché no encontrado en {ruta}. Corre spotify.R primero.")
-  fromJSON(ruta, simplifyVector = FALSE)
-}
-
-guardar_cache <- function(cache, ruta) {
-  cache$`_meta`$ultima_actualizacion <- format(Sys.time(), "%Y-%m-%dT%H:%M:%S")
-  write_json(cache, ruta, pretty = TRUE, auto_unbox = TRUE)
-}
+source(here::here("utils.R"))
 
 # --- HTTP -------------------------------------------------------------------
 
-mb_get <- function(endpoint, params = list(), max_reintentos = 3) {
+mb_get <- function(endpoint, params = list(), max_reintentos = HTTP_MAX_RETRIES) {
   url <- paste0(MB_BASE, "/", endpoint)
 
   for (intento in seq_len(max_reintentos)) {
@@ -75,7 +59,7 @@ mb_get <- function(endpoint, params = list(), max_reintentos = 3) {
 buscar_release_group <- function(artista, album) {
   query <- paste0('releasegroup:"', album, '" AND artist:"', artista, '"')
   data <- mb_get("release-group", params = list(query = query, limit = "5"))
-  Sys.sleep(1)
+  Sys.sleep(MB_PAUSE)
 
   if (is.null(data) || is.null(data$`release-groups`) || length(data$`release-groups`) == 0) return(NULL)
   mejor <- data$`release-groups`[[1]]
@@ -84,21 +68,21 @@ buscar_release_group <- function(artista, album) {
 
 buscar_release_info <- function(release_group_mbid) {
   data <- mb_get(paste0("release-group/", release_group_mbid), params = list(inc = "releases"))
-  Sys.sleep(1)
+  Sys.sleep(MB_PAUSE)
 
   if (is.null(data) || is.null(data$releases) || length(data$releases) == 0) {
     return(list(sello = NA_character_, pais = NA_character_))
   }
 
-  # Probar máximo MAX_RELEASES para no hacer demasiadas llamadas
-  n <- min(length(data$releases), MAX_RELEASES)
+  # Probar máximo MB_MAX_RELEASES para no hacer demasiadas llamadas
+  n <- min(length(data$releases), MB_MAX_RELEASES)
 
   for (i in seq_len(n)) {
     release <- data$releases[[i]]
     pais <- release$country %||% NA_character_
 
     detail <- mb_get(paste0("release/", release$id), params = list(inc = "labels"))
-    Sys.sleep(1)
+    Sys.sleep(MB_PAUSE)
 
     sello <- NA_character_
     if (!is.null(detail) && !is.null(detail$`label-info`) && length(detail$`label-info`) > 0) {
@@ -113,7 +97,7 @@ buscar_release_info <- function(release_group_mbid) {
 }
 
 buscar_artwork_caa <- function(release_group_mbid) {
-  url <- paste0(CAA_BASE, "/release-group/", release_group_mbid)
+  url <- paste0(MB_CAA_BASE, "/release-group/", release_group_mbid)
   resp <- tryCatch(
     request(url) |> req_headers(`User-Agent` = MB_USER_AGENT) |>
       req_error(is_error = \(resp) FALSE) |> req_perform(),
@@ -137,7 +121,7 @@ buscar_artwork_caa <- function(release_group_mbid) {
 main <- function() {
   cli_h1("Discoteca — Enriquecer desde MusicBrainz")
 
-  cache <- leer_cache(RUTA_CACHE)
+  cache <- leer_cache()
   todas <- names(cache$albumes)
 
   sin_mb <- Filter(
@@ -151,6 +135,7 @@ main <- function() {
   mins <- round(length(sin_mb) * 3 / 60)
   cli_alert_warning("~{mins} minutos estimados (1 req/s por política de MusicBrainz)")
 
+  inicio <- Sys.time()
   enriquecidos <- 0; no_encontrados <- 0; errores <- 0
 
   for (i in seq_along(sin_mb)) {
@@ -168,7 +153,7 @@ main <- function() {
             mbid = NA, sello = NA, pais = NA, tipo = NA,
             fecha_consulta = format(Sys.Date()), nota = "No encontrado en MusicBrainz"
           )
-          guardar_cache(cache, RUTA_CACHE)
+          guardar_cache(cache)
           cli_alert_warning("    No encontrado")
           "no_encontrado"
         } else {
@@ -177,7 +162,7 @@ main <- function() {
           # Artwork respaldo
           if (is.null(a$artwork_url) || a$artwork_url == "") {
             artwork <- tryCatch(buscar_artwork_caa(rg$mbid), error = \(e) NA_character_)
-            Sys.sleep(1)
+            Sys.sleep(MB_PAUSE)
             if (!is.na(artwork)) {
               cache$albumes[[key]]$artwork_url <- artwork
               cli_alert_success("    Artwork encontrado")
@@ -188,7 +173,7 @@ main <- function() {
             mbid = rg$mbid, sello = info$sello, pais = info$pais,
             tipo = rg$tipo, fecha_consulta = format(Sys.Date())
           )
-          guardar_cache(cache, RUTA_CACHE)
+          guardar_cache(cache)
           cli_alert_success("    {rg$tipo} | {info$sello %||% '?'} | {info$pais %||% '?'}")
           "ok"
         }
@@ -199,7 +184,7 @@ main <- function() {
           mbid = NA, sello = NA, pais = NA, tipo = NA,
           fecha_consulta = format(Sys.Date()), nota = paste0("Error: ", e$message)
         )
-        guardar_cache(cache, RUTA_CACHE)
+        guardar_cache(cache)
         "error"
       }
     )
@@ -211,6 +196,7 @@ main <- function() {
 
   cli_h2("Resumen")
   cli_alert_info("Enriquecidos: {enriquecidos} | No encontrados: {no_encontrados} | Errores: {errores}")
+  reportar_tiempo(inicio)
 }
 
 main()

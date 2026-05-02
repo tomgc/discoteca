@@ -13,33 +13,20 @@
 #   - Si se interrumpe, el progreso queda guardado.
 #   - Errores individuales se registran en el caché con nota.
 #
-# PAQUETES: install.packages(c("httr2", "jsonlite", "cli"))
+# REFACTOR v5:
+#   - leer_cache() y guardar_cache() ahora vienen de utils.R
+#   - Constantes (RUTA_CACHE, LASTFM_BASE) vienen de utils.R
+#   - guardar_cache() ahora usa escritura atómica (P4) — antes no la tenía
+#
+# PAQUETES: install.packages(c("httr2", "jsonlite", "cli", "here"))
 # ============================================================================
 
 library(httr2)
-library(jsonlite)
-library(cli)
-
-# --- Configuración ----------------------------------------------------------
-
-RUTA_CACHE  <- file.path("datos", "music_cache.json")
-LASTFM_BASE <- "https://ws.audioscrobbler.com/2.0/"
-
-# --- Funciones de caché -----------------------------------------------------
-
-leer_cache <- function(ruta) {
-  if (!file.exists(ruta)) cli_abort("Caché no encontrado en {ruta}. Corre spotify.R primero.")
-  fromJSON(ruta, simplifyVector = FALSE)
-}
-
-guardar_cache <- function(cache, ruta) {
-  cache$`_meta`$ultima_actualizacion <- format(Sys.time(), "%Y-%m-%dT%H:%M:%S")
-  write_json(cache, ruta, pretty = TRUE, auto_unbox = TRUE)
-}
+source(here::here("utils.R"))
 
 # --- HTTP -------------------------------------------------------------------
 
-lastfm_get <- function(method, params, api_key, max_reintentos = 3) {
+lastfm_get <- function(method, params, api_key, max_reintentos = HTTP_MAX_RETRIES) {
   params_full <- c(list(method = method, api_key = api_key, format = "json"), params)
 
   for (intento in seq_len(max_reintentos)) {
@@ -137,7 +124,7 @@ main <- function() {
     cli_abort("Credenciales Last.fm no encontradas. Agrega LASTFM_API_KEY y LASTFM_USER a .Renviron")
   }
 
-  cache <- leer_cache(RUTA_CACHE)
+  cache <- leer_cache()
   todas <- names(cache$albumes)
 
   sin_lastfm <- Filter(
@@ -148,6 +135,7 @@ main <- function() {
   cli_alert_info("En caché: {length(todas)} | Sin Last.fm: {length(sin_lastfm)}")
   if (length(sin_lastfm) == 0) { cli_alert_success("Todos completos"); return(invisible(NULL)) }
 
+  inicio <- Sys.time()
   enriquecidos <- 0; no_encontrados <- 0; errores <- 0
 
   for (i in seq_along(sin_lastfm)) {
@@ -159,26 +147,26 @@ main <- function() {
     resultado <- tryCatch(
       {
         info <- buscar_album_lastfm(a$artista, a$album, api_key, usuario)
-        Sys.sleep(0.25)
+        Sys.sleep(LASTFM_PAUSE)
 
         if (is.null(info)) {
           cache$albumes[[key]]$lastfm <- list(
             scrobbles_totales = 0L, primer_scrobble = NA, tags_lastfm = list(),
             fecha_consulta = format(Sys.Date()), nota = "No encontrado en Last.fm"
           )
-          guardar_cache(cache, RUTA_CACHE)
+          guardar_cache(cache)
           "no_encontrado"
         } else {
           primer <- NA_character_
           if (info$scrobbles_totales > 0) {
             primer <- tryCatch(buscar_primer_scrobble(a$artista, a$album, api_key, usuario), error = \(e) NA_character_)
-            Sys.sleep(0.25)
+            Sys.sleep(LASTFM_PAUSE)
           }
           cache$albumes[[key]]$lastfm <- list(
             scrobbles_totales = info$scrobbles_totales, primer_scrobble = primer,
             tags_lastfm = info$tags_lastfm, fecha_consulta = format(Sys.Date())
           )
-          guardar_cache(cache, RUTA_CACHE)
+          guardar_cache(cache)
           cli_alert_success("    {info$scrobbles_totales} scrobbles")
           "ok"
         }
@@ -189,7 +177,7 @@ main <- function() {
           scrobbles_totales = 0L, primer_scrobble = NA, tags_lastfm = list(),
           fecha_consulta = format(Sys.Date()), nota = paste0("Error: ", e$message)
         )
-        guardar_cache(cache, RUTA_CACHE)
+        guardar_cache(cache)
         "error"
       }
     )
@@ -201,6 +189,7 @@ main <- function() {
 
   cli_h2("Resumen")
   cli_alert_info("Enriquecidos: {enriquecidos} | No encontrados: {no_encontrados} | Errores: {errores}")
+  reportar_tiempo(inicio)
 }
 
 main()
