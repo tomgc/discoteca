@@ -1,0 +1,23 @@
+# ── Discoteca — .gitignore ────────────────────────────────────────────────
+
+# Credenciales API (NUNCA subir a GitHub)
+.Renviron
+
+# Caché de datos (~30MB, se regenera con el pipeline)
+datos/music_cache.json
+
+# Archivos temporales de escritura atómica (P4)
+*.tmp
+
+# macOS
+.DS_Store
+
+# R / RStudio / Positron
+.Rhistory
+.Rdata
+.RData
+.Rproj.user/
+*.Rproj
+
+# Archivos históricos y respaldos (solo locales)
+archivo/

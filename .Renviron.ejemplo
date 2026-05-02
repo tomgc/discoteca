@@ -1,0 +1,12 @@
+# ── Discoteca — Credenciales API ──────────────────────────────────────────
+# Copia este archivo como .Renviron y rellena con tus credenciales.
+# NUNCA subas .Renviron a GitHub.
+#
+# Para cargar en R: readRenviron(".Renviron")
+
+SPOTIFY_CLIENT_ID=tu_client_id_aqui
+SPOTIFY_CLIENT_SECRET=tu_client_secret_aqui
+LASTFM_API_KEY=tu_api_key_aqui
+LASTFM_USER=tu_usuario_lastfm
+# MusicBrainz: no requiere credenciales
+# Wikipedia: no requiere credenciales
