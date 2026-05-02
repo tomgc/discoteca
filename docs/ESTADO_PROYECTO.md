@@ -1,44 +1,31 @@
-# Estado del Proyecto Discoteca — Mayo 2026 (v3)
+# Estado del Proyecto Discoteca — Mayo 2026 (v4)
 
 ## Resumen ejecutivo
 
 Catálogo personal de discos con 1375 álbumes importados desde Spotify, enriquecidos con Last.fm (scrobbles, tags) y MusicBrainz (sello, país, tipo). Backend en R completo. Frontend v3: header minimalista, releases bar horizontal (fusión del sidebar vertical + today banner), diseño visual refinado. Publicado en GitHub Pages.
 
-## Changelog v2 → v3
+## Changelog v3 → v4
 
-### Frontend (`index.html`)
+### Reorganización del proyecto
 
-**Header minimalista:**
-- Centrado con "DISCOTECA" en mayúsculas a 2.4rem → barra izquierda "Discoteca" a 1.1rem
-- Subtítulo pasa de debajo del título a inline con separador `·`
-- Padding reducido de 2.5rem/1.5rem a 0.55rem (~40px vs ~100px)
-- `text-transform: uppercase` eliminado
-
-**Releases bar (fusión sidebar + today banner):**
-- Eliminados: `<aside class="sidebar">` (columna izquierda 260px) y `<div class="today-banner">`
-- Nuevo: `<div class="releases-bar">` — barra horizontal debajo del toolbar
-- Navegación ◂ Mes Año ▸ a la izquierda, divider vertical, items scrolleables
-- Day labels como chips horizontales: fondo `--accent-dim`, texto blanco, altura 32px (alineado con portadas)
-- Día actual destacado con fondo `--accent` y font-weight 600
-- Auto-scroll al día de hoy en el mes actual
-- Layout principal: 2 columnas (`260px 1fr`) → columna única
-
-**Código JS:**
-- `renderReleaseList()` + `renderTodayBanner()` → `renderReleasesBar()` (función unificada)
-- Eliminados: `maxBannerReleases`, `calendarTitle`, `bannerLabel` de CONFIG/UI
-- CSS limpiado: clases `.today-banner-*`, `.sidebar`, `.release-day-*`, `.release-item-*` eliminadas
-
-**Sin cambios:** modal, grilla, feature, categorías, "What should I listen to today?", exportar JSON.
+- Documentación movida a `docs/` (ESTADO_PROYECTO, principios_desarrollo, PROMPT_DISCOTECA)
+- Scripts one-time movidos a `archivo/fixes/` (6 scripts de fix/diagnóstico)
+- Transiciones entre sesiones movidas a `archivo/transiciones/`
+- Respaldos por versión en `archivo/v1/` a `archivo/v4/`
+- `.gitignore` creado: excluye `.Renviron`, `music_cache.json`, `archivo/`, `.DS_Store`
+- `.Renviron.ejemplo` creado como plantilla de credenciales
+- `PROMPT_DISCOTECA.md` creado: brief completo del proyecto reconstruido
+- Credenciales removidas de documentación pública (rotación pendiente)
 
 ## Estructura de archivos
 
 ```
 ~/Desktop/Discoteca/
 │
-├── .Renviron                      ← Credenciales API (NO subir a GitHub)
+├── .Renviron                      ← Credenciales API (en .gitignore)
 ├── .Renviron.ejemplo              ← Plantilla sin credenciales
 ├── .gitignore
-├── README.md                      ← Documentación del proyecto para GitHub
+├── README.md                      ← Documentación para GitHub (raíz)
 │
 │── BACKEND R ─────────────────────────────────────────────
 ├── utils.R                        ← Módulo compartido (caché atómico, constantes, validación)
@@ -49,34 +36,28 @@ Catálogo personal de discos con 1375 álbumes importados desde Spotify, enrique
 ├── deduplicar.R                   ← Detectar y marcar álbumes duplicados
 ├── wikipedia.R                    ← Enriquecer masterpieces con Wikipedia
 │
-│── FIXES ONE-TIME (ya corridos, no necesitan re-correrse) ─
-├── fix_lastfm_errors.R
-├── fix_musicbrainz_titulos.R
-├── fix_musicbrainz_v2.R
-├── fix_musicbrainz_manual.R
-├── diagnostico_musicbrainz_v2.R
-│
 │── FRONTEND ──────────────────────────────────────────────
 ├── index.html                     ← Plataforma web v3
 │
 │── DATOS ─────────────────────────────────────────────────
 ├── datos/
-│   ├── music_cache.json           ← Caché permanente (1375 álbumes, ~30MB)
+│   ├── music_cache.json           ← Caché permanente (1375 álbumes, ~30MB, en .gitignore)
 │   ├── catalogo.json              ← Datos para la web (generado por construir.R)
 │   ├── catalogo_musica.csv        ← Para Excel/R (generado por construir.R)
 │   ├── correcciones_mb.json       ← Tabla de correcciones manuales MusicBrainz
 │   └── ediciones_web.json         ← Exportado desde la web (si existe)
 │
-│── VERSIONES ANTERIORES ──────────────────────────────────
-├── v1/                            ← Frontend v1 (original)
-├── v2/                            ← Frontend v2 (rewrite: categorías, inglés, sidebar)
-├── v3/                            ← Frontend v3 (header minimal, releases bar horizontal)
-│
 │── DOCUMENTACIÓN ─────────────────────────────────────────
-├── README.md                      ← Documentación para GitHub
-├── principios_desarrollo.md       ← Principios que rigen todo el código
-├── PROMPT_DISCOTECA.md            ← Brief original del proyecto
-└── ESTADO_PROYECTO.md             ← Este archivo
+├── docs/
+│   ├── ESTADO_PROYECTO.md         ← Este archivo
+│   ├── PROMPT_DISCOTECA.md        ← Brief original del proyecto
+│   └── principios_desarrollo.md   ← Principios que rigen todo el código
+│
+│── ARCHIVO (solo local, excluido de GitHub) ──────────────
+├── archivo/
+│   ├── fixes/                     ← Scripts one-time ya corridos
+│   ├── transiciones/              ← Documentos de transición entre sesiones
+│   └── v1/ v2/ v3/ v4/           ← Respaldos por versión
 ```
 
 ## Estado de los datos
@@ -129,14 +110,8 @@ Catálogo personal de discos con 1375 álbumes importados desde Spotify, enrique
 
 ## Credenciales API
 
-```
-SPOTIFY_CLIENT_ID=665e575529d24acfa84ad6f190752100
-SPOTIFY_CLIENT_SECRET=7ecae0f7feaf40babb05a3f2e2f7f5cb
-LASTFM_API_KEY=6b61b8fe8d1699850cd0788b2bea5859
-LASTFM_USER=Mr_EdGe
-# MusicBrainz: no requiere credenciales
-# Wikipedia: no requiere credenciales
-```
+Almacenadas en `.Renviron` (excluido de GitHub por `.gitignore`).
+Ver `.Renviron.ejemplo` para la plantilla.
 
 ## Orden de ejecución de scripts
 
@@ -163,11 +138,12 @@ source("wikipedia.R")
 source("construir.R")
 ```
 
-## Pendientes menores
+## Pendientes
 
 - Conteo de Sello en resumen de construir.R muestra NA (bug cosmético del reporte, no de los datos)
 - Clasificar discos con el nuevo sistema de categorías
 - Correr wikipedia.R cuando haya más masterpieces clasificados
+- Refactor: unificar uso de utils.R en todos los scripts (spotify.R, lastfm.R y musicbrainz.R tienen funciones duplicadas locales en vez de usar el módulo compartido)
 
 ## Notas técnicas
 
