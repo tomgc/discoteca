@@ -140,22 +140,25 @@ validar_catalogo <- function(catalogo) {
 
   for (i in seq_along(catalogo)) {
     a <- catalogo[[i]]
-    contexto <- sprintf("[%d] %s — %s", i, a$artista %||% "?", a$album %||% "?")
+    artista_str <- safe_str(a$artista)
+    album_str   <- safe_str(a$album)
+    contexto <- sprintf("[%d] %s — %s",
+                        i,
+                        if (nzchar(artista_str)) artista_str else "?",
+                        if (nzchar(album_str))   album_str   else "?")
 
-    if (!nzchar(a$id %||% ""))      problemas <- c(problemas, paste(contexto, "→ id vacío"))
-    if (!nzchar(a$artista %||% "")) problemas <- c(problemas, paste(contexto, "→ artista vacío"))
-    if (!nzchar(a$album %||% ""))   problemas <- c(problemas, paste(contexto, "→ album vacío"))
+    if (!nzchar(safe_str(a$id)))   problemas <- c(problemas, paste(contexto, "→ id vacío"))
+    if (!nzchar(artista_str))      problemas <- c(problemas, paste(contexto, "→ artista vacío"))
+    if (!nzchar(album_str))        problemas <- c(problemas, paste(contexto, "→ album vacío"))
 
-    cat <- a$categoria
-    if (!is.null(cat) && !(cat %in% CATEGORIAS_VALIDAS)) {
-      problemas <- c(problemas, paste(contexto, "→ categoría inválida:", cat))
+    cat_str <- safe_str(a$categoria)
+    if (nzchar(cat_str) && !(cat_str %in% CATEGORIAS_VALIDAS)) {
+      problemas <- c(problemas, paste(contexto, "→ categoría inválida:", cat_str))
     }
 
-    anio <- a$anio
-    if (!is.null(anio) && length(anio) == 1 && !is.na(anio) && anio > 0) {
-      if (anio < 1900 || anio > anio_max) {
-        problemas <- c(problemas, paste(contexto, "→ año fuera de rango:", anio))
-      }
+    anio <- safe_num(a$anio, NA_real_)
+    if (!is.na(anio) && anio > 0 && (anio < 1900 || anio > anio_max)) {
+      problemas <- c(problemas, paste(contexto, "→ año fuera de rango:", anio))
     }
   }
 
