@@ -13,11 +13,6 @@
 #   - Si se interrumpe, el progreso queda guardado.
 #   - Errores individuales se registran en el caché con nota.
 #
-# REFACTOR v5:
-#   - leer_cache() y guardar_cache() ahora vienen de utils.R
-#   - Constantes (RUTA_CACHE, LASTFM_BASE) vienen de utils.R
-#   - guardar_cache() ahora usa escritura atómica (P4) — antes no la tenía
-#
 # PAQUETES: install.packages(c("httr2", "jsonlite", "cli", "here"))
 # ============================================================================
 

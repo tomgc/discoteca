@@ -9,16 +9,6 @@
 #   - Helpers compartidos (safe_str, safe_num, colapsar, etc.)
 #
 # Todos los scripts lo cargan con source(here::here("utils.R"))
-#
-# CHANGELOG v4 → v5:
-#   - Todos los scripts ahora usan este módulo (antes cada uno definía
-#     sus propias versiones de leer_cache y guardar_cache)
-#   - safe_str() y safe_num() movidos desde construir.R; corregido bug
-#     donde as.character(NA) producía el string "NA" en el CSV
-#   - Agregada escribir_json_atomico() (antes duplicada en construir.R
-#     y deduplicar.R)
-#   - reportar_tiempo() para medir duración de procesos largos
-#
 # ============================================================================
 
 library(jsonlite)
@@ -179,7 +169,6 @@ validar_cache <- function(cache) {
 
 #' Extracción segura de texto — siempre devuelve un escalar character.
 #' Maneja NULL, NA, character(0) y vectores.
-#' FIX v5: as.character(NA) producía "NA" (el string). Ahora devuelve "".
 safe_str <- function(x) {
   if (is.null(x) || length(x) == 0) return("")
   val <- x[[1]]
@@ -188,7 +177,6 @@ safe_str <- function(x) {
 }
 
 #' Extracción segura de número — siempre devuelve un escalar numérico.
-#' FIX v5: is.na() check agregado para consistencia con safe_str.
 safe_num <- function(x, default = 0) {
   if (is.null(x) || length(x) == 0) return(default)
   val <- x[[1]]

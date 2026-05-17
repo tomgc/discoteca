@@ -11,12 +11,6 @@
 # CUÁNDO CORRER: después de spotify.R, lastfm.R, musicbrainz.R,
 #   o después de importar ediciones desde la web.
 #
-# REFACTOR v5:
-#   - Usa utils.R para leer_cache, guardar_cache, guardar_json, guardar_csv,
-#     safe_str, safe_num, colapsar, y todas las constantes
-#   - escribir_json_atomico() eliminada (reemplazada por guardar_json de utils.R)
-#   - Bug del NA corregido: safe_str(NA) ahora devuelve "" en vez de "NA"
-#
 # PAQUETES: install.packages(c("jsonlite", "cli", "here"))
 # ============================================================================
 
@@ -91,9 +85,6 @@ aplanar_album <- function(key, entry) {
       # Migrar rating/favorito → categoria si corresponde
       personal <- migrar_a_categoria(entry$personal %||% list())
 
-      # Construir URL de Spotify desde el ID del álbum
-      # El caché guarda id_spotify (ej: "4LH4d3cOWNNsVw41Gqt2kv")
-      # y la key del álbum es "spotify:{id}" — usamos ambas fuentes
       spotify_id <- entry$id_spotify %||% sub("^spotify:", "", key)
       spotify_url <- if (nchar(spotify_id) > 0) {
         paste0("https://open.spotify.com/album/", spotify_id)
