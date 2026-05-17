@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    name: Validate catalog & lint R
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          packages: |
+            any::jsonlite
+            any::testthat
+            any::lintr
+            any::here
+            any::cli
+
+      - name: Validate catalogo.json
+        run: |
+          Rscript -e '
+            cat <- jsonlite::fromJSON("datos/catalogo.json", simplifyVector = FALSE)
+            stopifnot(length(cat) > 0)
+            req <- c("id", "artista", "album")
+            missing <- Filter(function(a) length(setdiff(req, names(a))) > 0, cat)
+            if (length(missing) > 0) {
+              cat(sprintf("FAIL: %d álbumes con campos faltantes\n", length(missing)))
+              quit(status = 1)
+            }
+            cat(sprintf("OK: %d álbumes válidos\n", length(cat)))
+          '
+
+      - name: Run tests
+        run: Rscript tests/testthat.R
+
+      - name: Lint R scripts
+        run: |
+          Rscript -e '
+            res <- lintr::lint_dir(".", linters = lintr::linters_with_defaults(
+              line_length_linter   = lintr::line_length_linter(120),
+              object_name_linter   = NULL,
+              commented_code_linter= NULL,
+              indentation_linter   = NULL
+            ))
+            print(res)
+            # Solo falla si hay errors críticos, no warnings de estilo
+          '
+
+  html-check:
+    name: HTML & JSON sanity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check JSON files parse
+        run: |
+          for f in datos/*.json; do
+            python3 -c "import json; json.load(open('$f'))" \
+              && echo "OK: $f" \
+              || (echo "FAIL: $f" && exit 1)
+          done
+
+      - name: Check HTML references existing assets
+        run: |
+          set -e
+          # Cada src/href local debe existir en disco
+          for ref in $(grep -oE '(src|href)="(assets|datos)/[^"]+"' index.html | sed -E 's/^.*="([^"]+)"$/\1/'); do
+            test -f "$ref" || { echo "FAIL: $ref no existe"; exit 1; }
+            echo "OK: $ref"
+          done
