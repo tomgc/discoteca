@@ -34,16 +34,16 @@
   <p id="subtitle">Personal record collection</p>
 </header>
 
-<div class="toolbar">
-  <input type="search" id="search" placeholder="Search artist, album, tag…" autocomplete="off">
-  <select id="filter-genero"><option value="">Genre</option></select>
-  <select id="filter-decada"><option value="">Decade</option></select>
-  <select id="filter-categoria"><option value="">Category</option></select>
-  <div class="toggle-group">
-    <button id="btn-collection" class="active">Collection</button>
-    <button id="btn-all">All</button>
+<div class="toolbar" role="search" aria-label="Catalog filters">
+  <input type="search" id="search" placeholder="Search artist, album, tag…" autocomplete="off" aria-label="Search artist, album or tag">
+  <select id="filter-genero" aria-label="Filter by genre"><option value="">Genre</option></select>
+  <select id="filter-decada" aria-label="Filter by decade"><option value="">Decade</option></select>
+  <select id="filter-categoria" aria-label="Filter by category"><option value="">Category</option></select>
+  <div class="toggle-group" role="group" aria-label="View mode">
+    <button id="btn-collection" class="active" aria-pressed="true">Collection</button>
+    <button id="btn-all" aria-pressed="false">All</button>
   </div>
-  <span class="counter" id="counter"></span>
+  <span class="counter" id="counter" aria-live="polite"></span>
   <div class="toolbar-right">
     <button class="btn-triage" id="btn-triage" title="Quick classify unrated albums" style="display:none">Triage</button>
     <button class="btn-export" id="btn-export" title="Export personal edits as JSON">Export JSON</button>
@@ -51,11 +51,11 @@
 </div>
 
 <!-- RELEASES BAR (fusión de sidebar + today-banner) -->
-<div class="releases-bar" id="releases-bar">
+<div class="releases-bar" id="releases-bar" aria-label="Releases this month">
   <div class="releases-bar-nav">
-    <button id="cal-prev">◂</button>
+    <button id="cal-prev" aria-label="Previous month">◂</button>
     <span class="releases-bar-label" id="cal-month-label"></span>
-    <button id="cal-next">▸</button>
+    <button id="cal-next" aria-label="Next month">▸</button>
   </div>
   <div class="releases-bar-divider"></div>
   <div class="releases-bar-items" id="releases-bar-items"></div>
@@ -112,10 +112,10 @@
 </div>
 
 <!-- MODAL -->
-<div class="modal-overlay" id="modal-overlay">
+<div class="modal-overlay" id="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-album">
   <div class="modal" id="modal">
-    <button class="modal-share" id="modal-share" title="Copy share link">⎘</button>
-    <button class="modal-close" id="modal-close">&times;</button>
+    <button class="modal-share" id="modal-share" title="Copy share link" aria-label="Copy share link">⎘</button>
+    <button class="modal-close" id="modal-close" aria-label="Close">&times;</button>
     <div class="modal-art" id="modal-art"></div>
     <div class="modal-body">
       <div class="modal-artist" id="modal-artist"></div>
