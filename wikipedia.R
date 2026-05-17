@@ -157,8 +157,10 @@ main <- function() {
   for (i in seq_along(pendientes)) {
     k <- names(pendientes)[i]
     entry <- pendientes[[k]]
-    artista <- entry$artista %||% ""
-    album <- entry$album %||% ""
+    # safe_str normaliza NULL, NA, list() vacía — robustez contra
+    # cómo jsonlite serializa campos opcionales del caché.
+    artista <- safe_str(entry$artista)
+    album   <- safe_str(entry$album)
 
     cli_text("[{i}/{length(pendientes)}] {artista} — {album}")
 

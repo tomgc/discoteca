@@ -84,16 +84,19 @@ normalizar_nombre <- function(nombre) {
   trimws(gsub("\\s+", " ", n))
 }
 
-#' Clave de agrupación: artista + album normalizado
+#' Clave de agrupación: artista + album normalizado.
+#' safe_str maneja NULL, NA, list() vacía y character(0) → escalar character.
 clave_album <- function(entry) {
-  artista <- trimws(tolower(entry$artista %||% ""))
-  album   <- normalizar_nombre(entry$album %||% "")
+  artista <- trimws(tolower(safe_str(entry$artista)))
+  album   <- normalizar_nombre(safe_str(entry$album))
   paste(artista, album, sep = " — ")
 }
 
-#' Scrobbles del álbum (para decidir cuál conservar)
+#' Scrobbles del álbum (para decidir cuál conservar).
+#' safe_num garantiza escalar numérico — el get_scrobbles se usa en
+#' vapply(..., numeric(1)) que falla si recibe list().
 get_scrobbles <- function(entry) {
-  entry$lastfm$scrobbles_totales %||% 0L
+  safe_num(entry$lastfm$scrobbles_totales, 0L)
 }
 
 # --- Main --------------------------------------------------------------------
