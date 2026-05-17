@@ -361,14 +361,15 @@ function render() {
 
   grid.innerHTML = filtrados.map(a => {
     const dimClass = a.categoria === 'descartado' ? ' card-dismissed' : '';
+    const accName = `${a.artista} — ${a.album}${a.anio ? ' (' + a.anio + ')' : ''}`;
     return `
-    <div class="card${dimClass}" data-id="${a.id}">
+    <div class="card${dimClass}" data-id="${a.id}" role="button" tabindex="0" aria-label="${escapeHtml(accName)}">
       <div class="card-art">
         ${a.artwork_url
-          ? `<img src="${a.artwork_url}" alt="${escapeHtml(a.album)}" loading="lazy">`
-          : `<div class="placeholder">${escapeHtml(a.album.charAt(0))}</div>`
+          ? `<img src="${a.artwork_url}" alt="" loading="lazy">`
+          : `<div class="placeholder" aria-hidden="true">${escapeHtml(a.album.charAt(0))}</div>`
         }
-        ${a.categoria === 'masterpiece' ? '<span class="card-fav">◆</span>' : ''}
+        ${a.categoria === 'masterpiece' ? '<span class="card-fav" aria-hidden="true">◆</span>' : ''}
       </div>
       <div class="card-info">
         <div class="card-artist">${escapeHtml(a.artista)}</div>
@@ -381,9 +382,15 @@ function render() {
     </div>`;
   }).join('');
 
-  // Event listeners para abrir modal
+  // Event listeners para abrir modal (click y teclado)
   grid.querySelectorAll('.card').forEach(card => {
     card.addEventListener('click', () => openModal(card.dataset.id));
+    card.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        openModal(card.dataset.id);
+      }
+    });
   });
 
   // Ocultar feature cuando hay filtros activos
@@ -753,13 +760,17 @@ document.getElementById('filter-categoria').addEventListener('change', render);
 document.getElementById('btn-collection').addEventListener('click', () => {
   viewMode = 'collection';
   document.getElementById('btn-collection').classList.add('active');
+  document.getElementById('btn-collection').setAttribute('aria-pressed', 'true');
   document.getElementById('btn-all').classList.remove('active');
+  document.getElementById('btn-all').setAttribute('aria-pressed', 'false');
   render();
 });
 document.getElementById('btn-all').addEventListener('click', () => {
   viewMode = 'all';
   document.getElementById('btn-all').classList.add('active');
+  document.getElementById('btn-all').setAttribute('aria-pressed', 'true');
   document.getElementById('btn-collection').classList.remove('active');
+  document.getElementById('btn-collection').setAttribute('aria-pressed', 'false');
   render();
 });
 
