@@ -14,11 +14,6 @@
 #   - Si se interrumpe, el progreso queda guardado en disco.
 #   - Redirect URI: http://127.0.0.1:1410/
 #
-# REFACTOR v5:
-#   - leer_cache() y guardar_cache() ahora vienen de utils.R
-#   - Constantes (RUTA_CACHE, SPOTIFY_BASE, PAGE_SIZE) vienen de utils.R
-#   - guardar_cache() ahora usa escritura atómica (P4) — antes no la tenía
-#
 # PAQUETES: install.packages(c("httr2", "jsonlite", "cli", "here"))
 # ============================================================================
 
@@ -30,6 +25,7 @@ source(here::here("utils.R"))
 obtener_token_spotify <- function() {
   client_id     <- Sys.getenv("SPOTIFY_CLIENT_ID")
   client_secret <- Sys.getenv("SPOTIFY_CLIENT_SECRET")
+  refresh_token <- Sys.getenv("SPOTIFY_REFRESH_TOKEN")
 
   if (client_id == "" || client_secret == "") {
     cli_abort(c(
@@ -45,6 +41,14 @@ obtener_token_spotify <- function() {
     name = "discoteca"
   )
 
+  # Modo CI / no interactivo: refrescar token sin abrir navegador
+  if (refresh_token != "") {
+    token <- oauth_flow_refresh(client = cliente, refresh_token = refresh_token)
+    cli_alert_success("Token obtenido vía refresh token (modo no interactivo)")
+    return(token)
+  }
+
+  # Modo interactivo (local): abre navegador en SPOTIFY_REDIRECT
   token <- oauth_flow_auth_code(
     client = cliente,
     auth_url = "https://accounts.spotify.com/authorize",

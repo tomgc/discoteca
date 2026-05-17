@@ -1,0 +1,83 @@
+name: Pipeline (scheduled)
+
+# Corre el pipeline completo cada domingo a las 09:00 UTC y abre PR
+# con el catalogo.json actualizado si hay cambios.
+#
+# REQUIERE SECRETS (Settings → Secrets and variables → Actions):
+#   - SPOTIFY_CLIENT_ID
+#   - SPOTIFY_CLIENT_SECRET
+#   - SPOTIFY_REFRESH_TOKEN     (token OAuth con scope user-library-read)
+#   - LASTFM_API_KEY
+#   - LASTFM_USER
+#
+# El job se salta automáticamente si faltan credenciales.
+
+on:
+  schedule:
+    - cron: '0 9 * * 0'        # domingos 09:00 UTC
+  workflow_dispatch:            # botón manual
+
+jobs:
+  refresh:
+    name: Refresh catalog
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Skip if no credentials
+        if: ${{ !secrets.SPOTIFY_CLIENT_ID || !secrets.LASTFM_API_KEY }}
+        run: |
+          echo "::warning::Skipping — falta SPOTIFY_CLIENT_ID o LASTFM_API_KEY"
+          exit 78    # neutral skip
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          packages: |
+            any::httr2
+            any::jsonlite
+            any::dplyr
+            any::purrr
+            any::stringr
+            any::here
+            any::janitor
+            any::readr
+            any::cli
+
+      - name: Write .Renviron from secrets
+        run: |
+          cat > .Renviron <<EOF
+          SPOTIFY_CLIENT_ID=${{ secrets.SPOTIFY_CLIENT_ID }}
+          SPOTIFY_CLIENT_SECRET=${{ secrets.SPOTIFY_CLIENT_SECRET }}
+          SPOTIFY_REFRESH_TOKEN=${{ secrets.SPOTIFY_REFRESH_TOKEN }}
+          LASTFM_API_KEY=${{ secrets.LASTFM_API_KEY }}
+          LASTFM_USER=${{ secrets.LASTFM_USER }}
+          EOF
+
+      - name: Run pipeline
+        run: Rscript run_all.R
+
+      - name: Remove .Renviron
+        if: always()
+        run: rm -f .Renviron
+
+      - name: Open PR with changes
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: 'Pipeline semanal: actualizar catalogo.json'
+          branch: pipeline/weekly-refresh
+          delete-branch: true
+          title: 'Pipeline semanal: actualizar catalogo.json'
+          body: |
+            Refresh automático del pipeline.
+
+            Diff: revisar `datos/catalogo.json` y `datos/catalogo_musica.csv`.
+          add-paths: |
+            datos/catalogo.json
+            datos/catalogo_musica.csv
