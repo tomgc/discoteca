@@ -1,0 +1,162 @@
+# Tests para utils.R
+# Correr desde la raíz del proyecto:  Rscript tests/testthat.R
+
+library(testthat)
+library(here)
+source(here("utils.R"))
+
+
+# ── safe_str ────────────────────────────────────────────────────────────────
+
+test_that("safe_str maneja NULL", {
+  expect_identical(safe_str(NULL), "")
+})
+
+test_that("safe_str maneja NA — regresión del bug v5", {
+  expect_identical(safe_str(NA), "")
+  expect_identical(safe_str(NA_character_), "")
+  expect_identical(safe_str(NA_integer_), "")
+})
+
+test_that("safe_str maneja character(0)", {
+  expect_identical(safe_str(character(0)), "")
+  expect_identical(safe_str(list()), "")
+})
+
+test_that("safe_str pasa por escalares normales", {
+  expect_identical(safe_str("hola"), "hola")
+  expect_identical(safe_str(42), "42")
+  expect_identical(safe_str(TRUE), "TRUE")
+})
+
+test_that("safe_str toma el primer elemento de vectores", {
+  expect_identical(safe_str(c("a", "b", "c")), "a")
+  expect_identical(safe_str(list("x", "y")), "x")
+})
+
+
+# ── safe_num ────────────────────────────────────────────────────────────────
+
+test_that("safe_num maneja NULL con default", {
+  expect_identical(safe_num(NULL), 0)
+  expect_identical(safe_num(NULL, default = -1), -1)
+})
+
+test_that("safe_num maneja NA", {
+  expect_identical(safe_num(NA), 0)
+  expect_identical(safe_num(NA_real_), 0)
+  expect_identical(safe_num(NA, default = 999), 999)
+})
+
+test_that("safe_num maneja character(0)", {
+  expect_identical(safe_num(numeric(0)), 0)
+  expect_identical(safe_num(list()), 0)
+})
+
+test_that("safe_num convierte numéricos correctamente", {
+  expect_identical(safe_num(42), 42)
+  expect_identical(safe_num(3.14), 3.14)
+  expect_identical(safe_num("7"), 7)
+})
+
+test_that("safe_num toma el primer elemento de vectores", {
+  expect_identical(safe_num(c(1, 2, 3)), 1)
+})
+
+
+# ── colapsar ────────────────────────────────────────────────────────────────
+
+test_that("colapsar maneja NULL y vacíos", {
+  expect_identical(colapsar(NULL), "")
+  expect_identical(colapsar(character(0)), "")
+  expect_identical(colapsar(list()), "")
+})
+
+test_that("colapsar une con '; '", {
+  expect_identical(colapsar(c("rock", "indie")), "rock; indie")
+  expect_identical(colapsar(list("a", "b", "c")), "a; b; c")
+})
+
+test_that("colapsar maneja un solo elemento", {
+  expect_identical(colapsar("rock"), "rock")
+})
+
+
+# ── Constantes ──────────────────────────────────────────────────────────────
+
+test_that("constantes de categorías están definidas y son consistentes", {
+  expect_true(all(CATEGORIAS_VISIBLES %in% CATEGORIAS_VALIDAS))
+  expect_true("descartado" %in% CATEGORIAS_VALIDAS)
+  expect_false("descartado" %in% CATEGORIAS_VISIBLES)
+})
+
+test_that("rutas son absolutas vía here::here", {
+  expect_true(startsWith(RUTA_CACHE, "/") || grepl(":", RUTA_CACHE))
+  expect_true(endsWith(RUTA_CACHE, "music_cache.json"))
+  expect_true(endsWith(RUTA_CATALOGO, "catalogo.json"))
+  expect_true(endsWith(RUTA_CSV, "catalogo_musica.csv"))
+})
+
+test_that("rate limits respetan políticas de las APIs", {
+  expect_gte(MB_PAUSE, 1)
+  expect_gt(LASTFM_PAUSE, 0)
+  expect_gte(SPOTIFY_PAGE_SIZE, 1)
+  expect_lte(SPOTIFY_PAGE_SIZE, 50)
+})
+
+
+# ── validar_cache ───────────────────────────────────────────────────────────
+
+test_that("validar_cache detecta estructura faltante", {
+  expect_false(validar_cache(list()))
+  expect_false(validar_cache(list(albumes = list())))
+})
+
+test_that("validar_cache acepta caché vacío con _meta", {
+  cache_vacio <- list(`_meta` = list(version = "test"), albumes = list())
+  expect_true(validar_cache(cache_vacio))
+})
+
+test_that("validar_cache acepta álbum con todos los campos requeridos", {
+  cache_ok <- list(
+    `_meta` = list(version = "test"),
+    albumes = list(
+      "spotify:abc" = list(
+        artista     = "Test",
+        album       = "Disco Test",
+        anio        = 2020L,
+        artwork_url = "http://x/y.jpg"
+      )
+    )
+  )
+  expect_true(validar_cache(cache_ok))
+})
+
+
+# ── Round-trip de I/O ───────────────────────────────────────────────────────
+
+test_that("guardar_json + leer producen el mismo dato", {
+  tmp <- tempfile(fileext = ".json")
+  on.exit(unlink(tmp))
+
+  datos <- list(
+    list(id = "a", nombre = "uno", valor = 1L),
+    list(id = "b", nombre = "dos", valor = 2L)
+  )
+  guardar_json(datos, tmp, auto_unbox = TRUE)
+
+  expect_true(file.exists(tmp))
+  leido <- jsonlite::fromJSON(tmp, simplifyVector = FALSE)
+  expect_length(leido, 2)
+  expect_identical(leido[[1]]$id, "a")
+  expect_identical(leido[[2]]$valor, 2L)
+})
+
+test_that("escritura atómica no deja archivos .tmp residuales", {
+  tmp <- tempfile(fileext = ".json")
+  on.exit(unlink(c(tmp, paste0(tmp, ".tmp"))))
+
+  guardar_json(list(x = 1), tmp, auto_unbox = TRUE)
+  expect_true(file.exists(tmp))
+  expect_false(file.exists(paste0(tmp, ".tmp")))
+})

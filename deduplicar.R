@@ -22,11 +22,6 @@
 # MODO: por defecto corre en modo diagnóstico (solo reporta).
 #   Cambiar APLICAR_CAMBIOS a TRUE para marcar los duplicados.
 #
-# REFACTOR v5:
-#   - Usa utils.R para leer_cache, guardar_cache y constantes
-#   - Matching fuzzy para detectar re-issues y variantes
-#   - escribir_json_atomico() eliminada (guardar_cache de utils.R la reemplaza)
-#
 # PAQUETES: install.packages(c("jsonlite", "cli", "here"))
 # ============================================================================
 
