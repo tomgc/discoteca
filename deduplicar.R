@@ -216,4 +216,5 @@ main <- function() {
   cli_alert_info("Corre construir.R para regenerar el catálogo")
 }
 
-main()
+# Guard: ver construir.R para explicación.
+if (!isTRUE(getOption("discoteca.load_only"))) main()

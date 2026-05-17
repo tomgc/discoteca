@@ -221,4 +221,7 @@ main <- function() {
   cli_alert_info("Clasificados: {n_cat} (masterpiece: {n_master}, great: {n_great}, good: {n_good}, descartado: {n_descartado})")
 }
 
-main()
+# Guard: tests/testthat setea esta opción para cargar las funciones sin
+# ejecutar el pipeline. En uso normal (Rscript, run_all.R, source desde
+# consola interactiva) la opción no está y main() corre.
+if (!isTRUE(getOption("discoteca.load_only"))) main()
