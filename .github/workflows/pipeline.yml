@@ -10,7 +10,12 @@ name: Pipeline (scheduled)
 #   - LASTFM_API_KEY
 #   - LASTFM_USER
 #
-# El job se salta automáticamente si faltan credenciales.
+# OPCIONAL (backup adicional en Gist privado, retención indefinida):
+#   - BACKUP_GIST_ID            (id del Gist, creado vacío una vez)
+#   - BACKUP_GIST_TOKEN         (PAT con scope `gist`)
+#
+# El job se salta automáticamente si faltan credenciales principales.
+# El backup como artifact del workflow (90 días) siempre se hace.
 
 on:
   schedule:
@@ -66,6 +71,44 @@ jobs:
       - name: Remove .Renviron
         if: always()
         run: rm -f .Renviron
+
+      # --- Backup del music_cache.json ----------------------------------
+      # El cache vive solo en disco local del usuario y no entra al repo
+      # (~30MB, en .gitignore). Lo subimos como artifact del workflow
+      # (retención 90 días) para que recuperarlo sea trivial si se pierde.
+      # Si configuras BACKUP_GIST_ID + BACKUP_GIST_TOKEN, también lo
+      # actualiza en un Gist privado tuyo (retención indefinida).
+      - name: Compress cache for backup
+        if: success()
+        run: |
+          gzip -c datos/music_cache.json > music_cache.json.gz
+          ls -lh music_cache.json.gz
+
+      - name: Upload cache as workflow artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: music_cache-${{ github.run_number }}
+          path: music_cache.json.gz
+          retention-days: 90
+
+      - name: Update Gist backup (opcional)
+        if: success() && env.BACKUP_GIST_ID != '' && env.BACKUP_GIST_TOKEN != ''
+        env:
+          BACKUP_GIST_ID: ${{ secrets.BACKUP_GIST_ID }}
+          BACKUP_GIST_TOKEN: ${{ secrets.BACKUP_GIST_TOKEN }}
+        run: |
+          # Gist no soporta binarios — usamos base64 del .gz
+          base64 -w 0 music_cache.json.gz > music_cache.b64
+          jq -n --arg content "$(cat music_cache.b64)" \
+            '{description: "Discoteca music_cache backup (base64 gzip)", files: {"music_cache.json.gz.b64": {content: $content}}}' \
+            > payload.json
+          curl -fsSL -X PATCH \
+            -H "Authorization: Bearer $BACKUP_GIST_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/gists/$BACKUP_GIST_ID" \
+            -d @payload.json > /dev/null
+          echo "Gist updated."
 
       - name: Open PR with changes
         uses: peter-evans/create-pull-request@v6
