@@ -92,31 +92,36 @@ aplanar_album <- function(key, entry) {
         ""
       }
 
+      # safe_str/safe_num normalizan NULL, NA, list() y character(0)
+      # a un escalar predecible — evita que jsonlite emita "{}" en el
+      # JSON, lo que generaba diffs sucios y forzaba normalización en
+      # el frontend (assets/app.js → load()).
+      # Los campos que son arrays (generos, tags_*) sí pueden ser list().
       list(
         id                 = key,
-        artista            = entry$artista %||% "",
-        album              = entry$album %||% "",
-        anio               = entry$anio %||% 0L,
-        fecha_lanzamiento  = entry$fecha_lanzamiento %||% "",
-        fecha_precision    = entry$fecha_precision %||% "year",
-        sello              = entry$musicbrainz$sello %||% "",
-        pais               = entry$musicbrainz$pais %||% "",
-        num_tracks         = entry$num_tracks %||% 0L,
-        duracion_total_min = entry$duracion_total_min %||% 0,
-        artwork_url        = entry$artwork_url %||% "",
+        artista            = safe_str(entry$artista),
+        album              = safe_str(entry$album),
+        anio               = safe_num(entry$anio, 0L),
+        fecha_lanzamiento  = safe_str(entry$fecha_lanzamiento),
+        fecha_precision    = if (nzchar(safe_str(entry$fecha_precision))) safe_str(entry$fecha_precision) else "year",
+        sello              = safe_str(entry$musicbrainz$sello),
+        pais               = safe_str(entry$musicbrainz$pais),
+        num_tracks         = safe_num(entry$num_tracks, 0L),
+        duracion_total_min = safe_num(entry$duracion_total_min, 0),
+        artwork_url        = safe_str(entry$artwork_url),
         spotify_url        = spotify_url,
         generos            = entry$generos %||% list(),
-        scrobbles          = entry$lastfm$scrobbles_totales %||% 0L,
-        primer_scrobble    = entry$lastfm$primer_scrobble %||% "",
+        scrobbles          = safe_num(entry$lastfm$scrobbles_totales, 0L),
+        primer_scrobble    = safe_str(entry$lastfm$primer_scrobble),
         tags_lastfm        = entry$lastfm$tags_lastfm %||% list(),
         categoria          = personal$categoria,
-        notas              = personal$notas %||% "",
+        notas              = safe_str(personal$notas),
         tags_propios       = personal$tags_propios %||% list(),
-        wikipedia_extract  = entry$wikipedia$extract %||% "",
-        wikipedia_url      = entry$wikipedia$url %||% "",
-        fecha_agregado     = personal$fecha_agregado %||%
-                             entry$personal$fecha_agregado %||%
-                             format(Sys.Date())
+        wikipedia_extract  = safe_str(entry$wikipedia$extract),
+        wikipedia_url      = safe_str(entry$wikipedia$url),
+        fecha_agregado     = if (nzchar(safe_str(personal$fecha_agregado))) safe_str(personal$fecha_agregado)
+                             else if (nzchar(safe_str(entry$personal$fecha_agregado))) safe_str(entry$personal$fecha_agregado)
+                             else format(Sys.Date())
       )
     },
     error = function(e) {
