@@ -46,6 +46,7 @@
   <span class="counter" id="counter" aria-live="polite"></span>
   <div class="toolbar-right">
     <button class="btn-triage" id="btn-triage" title="Quick classify unrated albums" style="display:none">Triage</button>
+    <button class="btn-stats" id="btn-stats" title="Collection statistics">Stats</button>
     <button class="btn-export" id="btn-export" title="Export personal edits as JSON">Export JSON</button>
   </div>
 </div>
@@ -109,6 +110,15 @@
     </div>
   </main>
 
+</div>
+
+<!-- STATS OVERLAY -->
+<div class="stats-overlay" id="stats-overlay" role="dialog" aria-modal="true" aria-labelledby="stats-title">
+  <div class="stats-panel">
+    <button class="modal-close" id="stats-close" aria-label="Close">&times;</button>
+    <h2 id="stats-title" class="stats-title">Collection statistics</h2>
+    <div class="stats-grid" id="stats-grid"></div>
+  </div>
 </div>
 
 <!-- MODAL -->
