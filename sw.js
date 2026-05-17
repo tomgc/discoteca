@@ -7,7 +7,7 @@
 //   - artwork (i.scdn.co, coverartarchive): cache-first con expiración suave
 // ============================================================================
 
-const CACHE_VERSION = 'discoteca-v2';
+const CACHE_VERSION = 'discoteca-v3';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const DATA_CACHE  = `${CACHE_VERSION}-data`;
 const IMG_CACHE   = `${CACHE_VERSION}-img`;
