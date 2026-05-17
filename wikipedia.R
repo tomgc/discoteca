@@ -19,9 +19,8 @@
 # PAQUETES: install.packages(c("jsonlite", "cli", "here", "httr2"))
 # ============================================================================
 
-library(jsonlite)
-library(cli)
-library(here)
+source(here::here("utils.R"))
+instalar_si_falta("httr2")
 library(httr2)
 
 # --- Configuración (P11) ----------------------------------------------------

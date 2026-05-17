@@ -11,6 +11,20 @@
 # Todos los scripts lo cargan con source(here::here("utils.R"))
 # ============================================================================
 
+# C.12 — Verificación de dependencias: instala lo que falte antes de library().
+# Llamado tanto al cargar utils.R como por scripts que necesiten paquetes extra.
+instalar_si_falta <- function(paquetes) {
+  faltantes <- paquetes[
+    !vapply(paquetes, requireNamespace, logical(1), quietly = TRUE)
+  ]
+  if (length(faltantes) > 0) {
+    message("Instalando paquetes faltantes: ", paste(faltantes, collapse = ", "))
+    install.packages(faltantes)
+  }
+}
+
+instalar_si_falta(c("jsonlite", "cli", "here"))
+
 library(jsonlite)
 library(cli)
 library(here)
@@ -108,6 +122,73 @@ guardar_json <- function(data, ruta, ...) {
   ruta_tmp <- paste0(ruta, ".tmp")
   write_json(data, ruta_tmp, ...)
   file.rename(ruta_tmp, ruta)
+}
+
+#' Valida invariantes del catálogo aplanado antes de publicar (C.8, B.4).
+#'
+#' Checks (todos warning-level, NO detienen ejecución — C.8):
+#'   - Cada álbum tiene id, artista, album no vacíos
+#'   - Las categorías están en CATEGORIAS_VALIDAS (o NULL)
+#'   - El año, si existe, está en rango plausible (1900..año actual + 2)
+#'   - No hay IDs duplicados
+#'
+#' @param catalogo Lista de álbumes aplanados (output de construir.R).
+#' @return Lista con: total, problemas (vector de mensajes). Imprime warnings.
+validar_catalogo <- function(catalogo) {
+  problemas <- character(0)
+  anio_max  <- as.integer(format(Sys.Date(), "%Y")) + 2L
+
+  for (i in seq_along(catalogo)) {
+    a <- catalogo[[i]]
+    contexto <- sprintf("[%d] %s — %s", i, a$artista %||% "?", a$album %||% "?")
+
+    if (!nzchar(a$id %||% ""))      problemas <- c(problemas, paste(contexto, "→ id vacío"))
+    if (!nzchar(a$artista %||% "")) problemas <- c(problemas, paste(contexto, "→ artista vacío"))
+    if (!nzchar(a$album %||% ""))   problemas <- c(problemas, paste(contexto, "→ album vacío"))
+
+    cat <- a$categoria
+    if (!is.null(cat) && !(cat %in% CATEGORIAS_VALIDAS)) {
+      problemas <- c(problemas, paste(contexto, "→ categoría inválida:", cat))
+    }
+
+    anio <- a$anio
+    if (!is.null(anio) && length(anio) == 1 && !is.na(anio) && anio > 0) {
+      if (anio < 1900 || anio > anio_max) {
+        problemas <- c(problemas, paste(contexto, "→ año fuera de rango:", anio))
+      }
+    }
+  }
+
+  ids <- vapply(catalogo, \(a) a$id %||% "", character(1))
+  dups <- unique(ids[duplicated(ids) & nzchar(ids)])
+  if (length(dups) > 0) {
+    problemas <- c(problemas, paste("IDs duplicados:", paste(head(dups, 5), collapse = ", ")))
+  }
+
+  for (msg in problemas) cli_alert_warning(msg)
+
+  if (length(problemas) == 0) {
+    cli_alert_success("Validación del catálogo: {length(catalogo)} álbumes, sin problemas")
+  } else {
+    cli_alert_warning("Validación: {length(problemas)} problemas (no fatales)")
+  }
+
+  list(total = length(catalogo), problemas = problemas)
+}
+
+
+#' Ordena recursivamente las claves de un objeto JSON-like (C.10).
+#' Listas con names() son objetos JSON y se ordenan alfabéticamente.
+#' Listas sin names son arrays y se preservan en orden.
+#' Esto produce diffs git limpios cuando una fuente cambia el orden de keys.
+ordenar_keys <- function(x) {
+  if (is.list(x) && !is.null(names(x)) && all(nzchar(names(x)))) {
+    x <- x[sort(names(x))]
+    x <- lapply(x, ordenar_keys)
+  } else if (is.list(x)) {
+    x <- lapply(x, ordenar_keys)
+  }
+  x
 }
 
 #' Guarda CSV con escritura atómica y codificación UTF-8 explícita (P7).

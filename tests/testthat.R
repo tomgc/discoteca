@@ -1,3 +1,6 @@
+source(here::here("utils.R"))
+instalar_si_falta("testthat")
+
 library(testthat)
 library(here)
 
