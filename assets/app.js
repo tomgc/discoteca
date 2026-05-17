@@ -1172,6 +1172,171 @@ document.getElementById('cal-next').addEventListener('click', () => {
   renderReleasesBar();
 });
 
+// ============================================================================
+// STATS PANEL
+// ============================================================================
+// Agrega datos del catálogo y los muestra como cards con números grandes,
+// listas y barras horizontales. Se invalida al cambiar categorías porque
+// el cálculo es barato (~1375 items, <5ms).
+// ============================================================================
+
+function computeStats() {
+  const visibles = catalogo.filter(a => a.categoria !== 'descartado');
+  const total = catalogo.length;
+  const descartados = total - visibles.length;
+
+  const byCat = { masterpiece: 0, great: 0, good: 0, descartado: 0, unclassified: 0 };
+  catalogo.forEach(a => {
+    const c = a.categoria;
+    if (c && byCat[c] !== undefined) byCat[c]++;
+    else if (!c) byCat.unclassified++;
+  });
+
+  // Décadas
+  const byDecade = {};
+  visibles.forEach(a => {
+    if (!a.anio) return;
+    const d = Math.floor(a.anio / 10) * 10;
+    byDecade[d] = (byDecade[d] || 0) + 1;
+  });
+  const decadasOrdenadas = Object.keys(byDecade).map(Number).sort((a, b) => a - b);
+
+  // Top artistas
+  const byArtist = {};
+  visibles.forEach(a => {
+    const k = a.artista || '?';
+    byArtist[k] = (byArtist[k] || 0) + 1;
+  });
+  const topArtistas = Object.entries(byArtist)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10);
+
+  // Top géneros
+  const byGenero = {};
+  visibles.forEach(a => (a.generos || []).forEach(g => {
+    byGenero[g] = (byGenero[g] || 0) + 1;
+  }));
+  const topGeneros = Object.entries(byGenero)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10);
+
+  // Scrobbles
+  const totalScrobbles = visibles.reduce((s, a) => s + (a.scrobbles || 0), 0);
+  const topScrobbled = [...visibles]
+    .sort((a, b) => (b.scrobbles || 0) - (a.scrobbles || 0))
+    .slice(0, 5);
+
+  // Año más antiguo / más reciente
+  const anios = visibles.map(a => a.anio).filter(Boolean);
+  const masAntiguo = visibles.find(a => a.anio === Math.min(...anios));
+  const masReciente = visibles.find(a => a.anio === Math.max(...anios));
+
+  return {
+    total, descartados, visibles: visibles.length,
+    byCat, byDecade, decadasOrdenadas,
+    topArtistas, topGeneros,
+    totalScrobbles, topScrobbled,
+    masAntiguo, masReciente
+  };
+}
+
+function renderStats() {
+  const s = computeStats();
+  const grid = document.getElementById('stats-grid');
+
+  const barRow = (label, count, max) => {
+    const pct = max > 0 ? Math.round((count / max) * 100) : 0;
+    return `<div class="stats-bar-row">
+      <span class="stats-bar-label">${escapeHtml(label)}</span>
+      <span class="stats-bar-track"><span class="stats-bar-fill" style="width:${pct}%"></span></span>
+      <span class="stats-bar-count">${count}</span>
+    </div>`;
+  };
+
+  const maxDecade = Math.max(...Object.values(s.byDecade), 1);
+  const maxArtist = s.topArtistas[0]?.[1] || 1;
+  const maxGenero = s.topGeneros[0]?.[1] || 1;
+
+  grid.innerHTML = `
+    <div class="stats-card">
+      <h3>Overview</h3>
+      <div class="stats-big-numbers">
+        <div class="stats-big-number"><span class="num">${s.visibles}</span><span class="label">In collection</span></div>
+        <div class="stats-big-number"><span class="num">${s.descartados}</span><span class="label">Dismissed</span></div>
+        <div class="stats-big-number"><span class="num">${s.total}</span><span class="label">Total</span></div>
+      </div>
+    </div>
+
+    <div class="stats-card">
+      <h3>By category</h3>
+      ${barRow('◆ Masterpiece', s.byCat.masterpiece, s.total)}
+      ${barRow('● Great',       s.byCat.great,       s.total)}
+      ${barRow('○ Good',        s.byCat.good,        s.total)}
+      ${barRow('— Unclassified', s.byCat.unclassified, s.total)}
+      ${barRow('× Dismissed',   s.byCat.descartado,  s.total)}
+    </div>
+
+    <div class="stats-card">
+      <h3>By decade</h3>
+      ${s.decadasOrdenadas.map(d => barRow(d + 's', s.byDecade[d], maxDecade)).join('')}
+    </div>
+
+    <div class="stats-card">
+      <h3>Top artists</h3>
+      ${s.topArtistas.map(([name, n]) => barRow(name, n, maxArtist)).join('')}
+    </div>
+
+    <div class="stats-card">
+      <h3>Top genres</h3>
+      ${s.topGeneros.map(([name, n]) => barRow(name, n, maxGenero)).join('')}
+    </div>
+
+    <div class="stats-card">
+      <h3>Listening</h3>
+      <div class="stats-big-numbers">
+        <div class="stats-big-number"><span class="num">${s.totalScrobbles.toLocaleString()}</span><span class="label">Total scrobbles</span></div>
+      </div>
+      <ul class="stats-list" style="margin-top:0.8rem">
+        ${s.topScrobbled.map(a => `
+          <li>
+            <span class="name">${escapeHtml(a.artista)} — ${escapeHtml(a.album)}</span>
+            <span class="value">${(a.scrobbles || 0).toLocaleString()}</span>
+          </li>`).join('')}
+      </ul>
+    </div>
+
+    <div class="stats-card">
+      <h3>Range</h3>
+      <ul class="stats-list">
+        <li><span class="name">Oldest</span><span class="value">${s.masAntiguo ? escapeHtml(s.masAntiguo.album) + ' (' + s.masAntiguo.anio + ')' : '—'}</span></li>
+        <li><span class="name">Newest</span><span class="value">${s.masReciente ? escapeHtml(s.masReciente.album) + ' (' + s.masReciente.anio + ')' : '—'}</span></li>
+      </ul>
+    </div>
+  `;
+}
+
+function openStats() {
+  renderStats();
+  document.getElementById('stats-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeStats() {
+  document.getElementById('stats-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+document.getElementById('btn-stats').addEventListener('click', openStats);
+document.getElementById('stats-close').addEventListener('click', closeStats);
+document.getElementById('stats-overlay').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) closeStats();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && document.getElementById('stats-overlay').classList.contains('open')) {
+    closeStats();
+  }
+});
+
 // --- SERVICE WORKER --------------------------------------------------------
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
