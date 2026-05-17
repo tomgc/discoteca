@@ -10,6 +10,10 @@ A static web app that displays my personal music library as a browsable, filtera
 
 The backend is a set of R scripts that import albums from Spotify, enrich them with metadata from Last.fm, MusicBrainz, and Wikipedia, and produce a `catalogo.json` that the frontend consumes. The frontend is vanilla HTML/CSS/JS, installable as a PWA, with offline support via service worker.
 
+## Why it exists
+
+Spotify keeps my saved albums but doesn't let me organize them my way. Last.fm logs what I listen to but doesn't let me curate a collection. I wanted a place of my own where my records live classified, enriched with data from multiple sources, and where I can browse my library as if it were a record store.
+
 ## Features
 
 - **Grid of album covers** with artist, year, and category badges
