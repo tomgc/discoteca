@@ -22,20 +22,34 @@
 
 ETAPAS_DEFAULT <- c("spotify", "lastfm", "musicbrainz", "wikipedia", "construir")
 
+#' Calcula qué etapas correr a partir de los flags. Función pura, testeable.
+#' - only > skip > defaults
+#' - "construir" se garantiza al final si --only se usa (se necesita para
+#'   regenerar el catálogo después de cualquier enrichment).
+#' - dedup se inserta justo antes de "construir" (después de wikipedia
+#'   si existe; si no, justo antes de "construir").
+calcular_etapas <- function(skip = character(0), only = NULL, dedup = FALSE,
+                            defaults = ETAPAS_DEFAULT) {
+  etapas <- if (!is.null(only)) {
+    unique(c(only, "construir"))
+  } else {
+    setdiff(defaults, skip)
+  }
+
+  if (isTRUE(dedup)) {
+    etapas <- append(etapas, "deduplicar",
+                     after = match("wikipedia", etapas, nomatch = length(etapas) - 1))
+  }
+
+  etapas
+}
+
 run_all <- function(skip = character(0), only = NULL, dedup = FALSE) {
   if (file.exists(".Renviron")) readRenviron(".Renviron")
 
   library(cli)
 
-  etapas <- if (!is.null(only)) {
-    unique(c(only, "construir"))
-  } else {
-    setdiff(ETAPAS_DEFAULT, skip)
-  }
-
-  if (isTRUE(dedup)) {
-    etapas <- append(etapas, "deduplicar", after = match("wikipedia", etapas, nomatch = length(etapas) - 1))
-  }
+  etapas <- calcular_etapas(skip = skip, only = only, dedup = dedup)
 
   cli_h1("Discoteca — Pipeline completo")
   cli_alert_info("Etapas: {paste(etapas, collapse = ' → ')}")
@@ -68,11 +82,15 @@ run_all <- function(skip = character(0), only = NULL, dedup = FALSE) {
 
 # ── CLI: parseo de argumentos para Rscript ─────────────────────────────────
 
-if (!interactive() && sys.nframe() == 0L) {
-  args  <- commandArgs(trailingOnly = TRUE)
+#' Parsea args de commandArgs. Función pura — devuelve lista de flags o
+#' aborta con clase de condición. Permite tests sin invocar quit().
+#'
+#' @return list(skip, only, dedup, help) — o stop() con clase "discoteca_cli_error"
+parsear_args <- function(args) {
   skip  <- character(0)
   only  <- NULL
   dedup <- FALSE
+  help  <- FALSE
 
   i <- 1
   while (i <= length(args)) {
@@ -87,14 +105,33 @@ if (!interactive() && sys.nframe() == 0L) {
       dedup <- TRUE
       i <- i + 1
     } else if (a %in% c("-h", "--help")) {
-      cat("Uso: Rscript run_all.R [--skip a,b,c] [--only etapa] [--dedup]\n")
-      cat("Etapas: spotify, lastfm, musicbrainz, wikipedia, construir\n")
-      quit(status = 0)
+      help <- TRUE
+      i <- i + 1
     } else {
-      message("Argumento desconocido: ", a)
-      quit(status = 1)
+      stop(structure(
+        class    = c("discoteca_cli_error", "error", "condition"),
+        list(message = paste("Argumento desconocido:", a), call = sys.call())
+      ))
     }
   }
 
-  run_all(skip = skip, only = only, dedup = dedup)
+  list(skip = skip, only = only, dedup = dedup, help = help)
+}
+
+if (!interactive() && sys.nframe() == 0L) {
+  parsed <- tryCatch(
+    parsear_args(commandArgs(trailingOnly = TRUE)),
+    discoteca_cli_error = function(e) {
+      message(conditionMessage(e))
+      quit(status = 1)
+    }
+  )
+
+  if (isTRUE(parsed$help)) {
+    cat("Uso: Rscript run_all.R [--skip a,b,c] [--only etapa] [--dedup]\n")
+    cat("Etapas: spotify, lastfm, musicbrainz, wikipedia, construir\n")
+    quit(status = 0)
+  }
+
+  run_all(skip = parsed$skip, only = parsed$only, dedup = parsed$dedup)
 }
