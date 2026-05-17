@@ -136,10 +136,16 @@ main <- function() {
 
   cache <- importar_ediciones_web(cache, RUTA_WEB_EDIT)
 
-  # Aplanar (filtra NULLs de álbumes con estructura corrupta)
+  # B.4 — Invariante declarado: el catálogo aplanado debe tener al menos
+  # un álbum por cada entrada del caché (los nulls indican corrupción).
+  n_cache  <- length(cache$albumes)
   catalogo <- Filter(Negate(is.null), lapply(names(cache$albumes), function(key) {
     aplanar_album(key, cache$albumes[[key]])
   }))
+  n_perdidos <- n_cache - length(catalogo)
+  if (n_perdidos > 0) {
+    cli_alert_warning("{n_perdidos} álbumes del caché no se pudieron aplanar (estructura corrupta)")
+  }
 
   # Ordenar por artista, luego año
   catalogo <- catalogo[order(
@@ -149,8 +155,12 @@ main <- function() {
 
   cli_alert_info("Álbumes en catálogo: {length(catalogo)}")
 
-  # --- JSON para la web (P4 — escritura atómica, P10 — auto_unbox) -----------
-  guardar_json(catalogo, RUTA_CATALOGO, pretty = TRUE, auto_unbox = TRUE)
+  # C.8 — Validación de integridad antes de publicar
+  validar_catalogo(catalogo)
+
+  # --- JSON para la web (P4 atómico, P10 auto_unbox, C.10 keys ordenadas) ----
+  guardar_json(lapply(catalogo, ordenar_keys), RUTA_CATALOGO,
+               pretty = TRUE, auto_unbox = TRUE)
   cli_alert_success("catalogo.json → {length(catalogo)} álbumes")
 
   # --- CSV para Excel/R (vapply con tipo fijo para evitar sapply bugs) --------

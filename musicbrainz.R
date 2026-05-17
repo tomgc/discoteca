@@ -17,8 +17,9 @@
 # PAQUETES: install.packages(c("httr2", "jsonlite", "cli", "here"))
 # ============================================================================
 
-library(httr2)
 source(here::here("utils.R"))
+instalar_si_falta("httr2")
+library(httr2)
 
 # --- HTTP -------------------------------------------------------------------
 

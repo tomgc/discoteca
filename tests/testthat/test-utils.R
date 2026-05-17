@@ -160,3 +160,89 @@ test_that("escritura atómica no deja archivos .tmp residuales", {
   expect_true(file.exists(tmp))
   expect_false(file.exists(paste0(tmp, ".tmp")))
 })
+
+
+# ── ordenar_keys (C.10) ────────────────────────────────────────────────────
+
+test_that("ordenar_keys ordena alfabéticamente las claves de un objeto", {
+  entrada <- list(zebra = 1, alpha = 2, mike = 3)
+  resultado <- ordenar_keys(entrada)
+  expect_identical(names(resultado), c("alpha", "mike", "zebra"))
+})
+
+test_that("ordenar_keys es recursivo en objetos anidados", {
+  entrada <- list(
+    z = list(y = 1, a = 2),
+    a = list(c = 3, b = 4)
+  )
+  resultado <- ordenar_keys(entrada)
+  expect_identical(names(resultado), c("a", "z"))
+  expect_identical(names(resultado$a), c("b", "c"))
+  expect_identical(names(resultado$z), c("a", "y"))
+})
+
+test_that("ordenar_keys preserva orden de arrays (listas sin nombres)", {
+  entrada <- list(
+    items = list(
+      list(b = 1, a = 2),
+      list(b = 3, a = 4)
+    )
+  )
+  resultado <- ordenar_keys(entrada)
+  # El array preserva orden
+  expect_length(resultado$items, 2)
+  # Pero cada elemento del array tiene sus keys ordenadas
+  expect_identical(names(resultado$items[[1]]), c("a", "b"))
+  expect_identical(names(resultado$items[[2]]), c("a", "b"))
+})
+
+test_that("ordenar_keys es idempotente sobre escalares y vectores", {
+  expect_identical(ordenar_keys(42), 42)
+  expect_identical(ordenar_keys("hola"), "hola")
+  expect_identical(ordenar_keys(c(3, 1, 2)), c(3, 1, 2))
+})
+
+
+# ── validar_catalogo (C.8) ─────────────────────────────────────────────────
+
+test_that("validar_catalogo no encuentra problemas en catálogo válido", {
+  cat <- list(
+    list(id = "spotify:1", artista = "A", album = "X", anio = 2020L, categoria = "good"),
+    list(id = "spotify:2", artista = "B", album = "Y", anio = 1975L, categoria = NULL)
+  )
+  res <- suppressMessages(validar_catalogo(cat))
+  expect_length(res$problemas, 0)
+  expect_identical(res$total, 2L)
+})
+
+test_that("validar_catalogo detecta campos vacíos", {
+  cat <- list(list(id = "", artista = "", album = "X"))
+  res <- suppressMessages(validar_catalogo(cat))
+  expect_gte(length(res$problemas), 2)  # id y artista vacíos
+})
+
+test_that("validar_catalogo detecta categoría inválida", {
+  cat <- list(list(id = "1", artista = "A", album = "X", categoria = "epic"))
+  res <- suppressMessages(validar_catalogo(cat))
+  expect_true(any(grepl("epic", res$problemas, fixed = TRUE)))
+})
+
+test_that("validar_catalogo detecta IDs duplicados", {
+  cat <- list(
+    list(id = "spotify:1", artista = "A", album = "X"),
+    list(id = "spotify:1", artista = "B", album = "Y")
+  )
+  res <- suppressMessages(validar_catalogo(cat))
+  expect_true(any(grepl("duplicados", res$problemas)))
+})
+
+test_that("validar_catalogo detecta año fuera de rango", {
+  cat <- list(list(id = "1", artista = "A", album = "X", anio = 1800L))
+  res <- suppressMessages(validar_catalogo(cat))
+  expect_true(any(grepl("fuera de rango", res$problemas)))
+})
+
+test_that("validar_catalogo no es fatal — devuelve siempre lista", {
+  cat <- list(list(id = ""))
+  expect_silent(suppressMessages(validar_catalogo(cat)))
+})
