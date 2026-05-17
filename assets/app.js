@@ -107,6 +107,14 @@ function safeSetItem(key, value) {
   }
 }
 
+// Normaliza para búsqueda: lowercase + sin acentos.
+// "Cariño" → "carino", "El Niño" → "el nino" — match para usuarios que
+// escriben sin tildes/ñ. Usa Unicode NFD para descomponer caracteres
+// y luego elimina los marks combinantes (̀-ͯ).
+function normalizeForSearch(str) {
+  return String(str).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+}
+
 // P9 — Resiliencia: escapar HTML para evitar inyección accidental
 function escapeHtml(str) {
   if (typeof str !== 'string') return str;
@@ -313,7 +321,7 @@ function populateFilters() {
 }
 
 function getFiltered() {
-  const q = document.getElementById('search').value.toLowerCase().trim();
+  const q = normalizeForSearch(document.getElementById('search').value.trim());
   const genero = document.getElementById('filter-genero').value;
   const decada = document.getElementById('filter-decada').value;
   const categoria = document.getElementById('filter-categoria').value;
@@ -325,11 +333,11 @@ function getFiltered() {
     if (decada && Math.floor(a.anio / 10) * 10 !== parseInt(decada)) return false;
     if (categoria && a.categoria !== categoria) return false;
     if (q) {
-      const blob = [
+      const blob = normalizeForSearch([
         a.artista, a.album, ...(a.generos || []),
         ...(a.tags_lastfm || []), ...(a.tags_propios || []),
         a.sello || '', a.notas || '', a.categoria || ''
-      ].join(' ').toLowerCase();
+      ].join(' '));
       if (!blob.includes(q)) return false;
     }
     return true;
