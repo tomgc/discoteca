@@ -246,3 +246,15 @@ test_that("validar_catalogo no es fatal — devuelve siempre lista", {
   cat <- list(list(id = ""))
   expect_silent(suppressMessages(validar_catalogo(cat)))
 })
+
+test_that("validar_catalogo tolera NA y list() en cualquier campo (jsonlite)", {
+  cat <- list(
+    list(id = "1", artista = NA,         album = "X"),                # NA en string
+    list(id = "2", artista = "B",         album = "Y", categoria = NA), # NA en categoría
+    list(id = "3", artista = "C",         album = "Z", anio = NA),     # NA en año
+    list(id = "4", artista = "D",         album = "W", categoria = list()),  # list vacía
+    list(id = "5", artista = "E",         album = "Q", anio  = list())       # list vacía
+  )
+  # No debe explotar — solo warnings warning-level.
+  expect_no_error(suppressMessages(validar_catalogo(cat)))
+})
