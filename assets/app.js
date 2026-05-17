@@ -807,6 +807,20 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') closeModal();
 });
 
+// Keyboard shortcut: "/" enfoca la búsqueda (patrón GitHub/Reddit).
+// No dispara si el usuario está escribiendo en un input/textarea o si
+// hay un modal abierto (deja Escape como salida natural).
+document.addEventListener('keydown', (e) => {
+  if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey) return;
+  const t = e.target;
+  if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable) return;
+  if (document.getElementById('modal-overlay').classList.contains('open')) return;
+  if (document.getElementById('stats-overlay').classList.contains('open')) return;
+  e.preventDefault();
+  document.getElementById('search').focus();
+  document.getElementById('search').select();
+});
+
 document.getElementById('modal-tags-input').addEventListener('keydown', addTag);
 document.getElementById('btn-export').addEventListener('click', exportJSON);
 
