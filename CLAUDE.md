@@ -20,10 +20,23 @@ Catálogo personal de discos. R en el backend, web estática en GitHub Pages.
 
 ## Workflow
 
-- Después de tocar `utils.R` → correr tests.
+- Después de tocar `utils.R` o cualquier script con tests → correr `Rscript tests/testthat.R` (107 expectaciones).
 - Después de tocar scripts del pipeline → si tiene sentido y hay caché, regenerar `catalogo.json` con `Rscript run_all.R --only construir`.
-- Después de tocar frontend → verificar en preview (`preview_start` con server `discoteca`, puerto 4323).
+- Después de tocar frontend (`assets/styles.css` o `assets/app.js`) → incrementar `CACHE_VERSION` en `sw.js` (`discoteca-vN`) para que el SW invalide el shell cache. Verificar en preview (`preview_start` con server `discoteca`, puerto 4323).
 - Commits en español, conventional commits. Push directo a `main`.
+
+### Patrones obligatorios en R
+
+- **Acceso a campos opcionales del caché**: usar `safe_str()` / `safe_num()` de `utils.R`, NO `%||%` solo. `%||%` captura NULL pero NO `list()` vacía ni `NA` — formas en que jsonlite serializa campos opcionales. Pasar list() a operaciones que esperan escalar produce errores en runtime (`cat != "x"` da `logical(0)`, `vapply(..., numeric(1))` falla, etc.).
+- **Tests de funciones puras**: scripts con `main()` al final usan el guard `if (!isTRUE(getOption("discoteca.load_only"))) main()`. Los tests setean esa opción con `withr::local_options()` para sourcear sin ejecutar el pipeline.
+- **Antes de escribir JSON publicado**: pasar por `ordenar_keys()` para diffs git limpios.
+
+### Convenciones del frontend
+
+- **Búsqueda accent-insensitive**: usar `normalizeForSearch()` (NFD + remove combining marks + lowercase) para que "carino" matchee "Cariño". No solo `toLowerCase()`.
+- **Cards del grid**: deben ser `role="button" tabindex="0"` con `aria-label` descriptivo, handler de `Enter`/`Space`. Imágenes con `alt=""` (decorativas, la card ya tiene nombre accesible).
+- **Modales/overlays**: `role="dialog" aria-modal="true" aria-labelledby="..."`. Cerrar con Esc + click fuera. Manejar foco con guard de "modal abierto" en shortcuts globales.
+- **OG/Twitter meta tags**: actualizar dinámicamente en `setUrlAlbum()` para Slack/Discord/Telegram. Twitter/Facebook usan los defaults estáticos del `<head>`.
 
 ## Cosas a NO hacer
 
