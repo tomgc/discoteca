@@ -61,6 +61,36 @@ jobs:
             any::readr
             any::cli
 
+      # Si hay un artifact de music_cache de una corrida previa, lo
+      # restauramos ANTES del pipeline. Así el pipeline ve los álbumes ya
+      # enriquecidos y solo procesa los nuevos (en vez de re-procesar 1375
+      # contra MusicBrainz a 1 req/s = ~70 min).
+      # No-op en la primera corrida o si los artifacts ya expiraron.
+      - name: Restore music_cache from latest artifact
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          last_run=$(gh run list -R ${{ github.repository }} \
+            -w "Pipeline (scheduled)" -s success -L 1 \
+            --json databaseId -q '.[0].databaseId' 2>/dev/null || echo "")
+          if [ -z "$last_run" ]; then
+            echo "Primera corrida exitosa — uso el music_cache del checkout"
+            exit 0
+          fi
+          echo "Restaurando music_cache desde run $last_run..."
+          mkdir -p _restore
+          if gh run download "$last_run" -R ${{ github.repository }} \
+               -D _restore --pattern "music_cache-*" 2>/dev/null; then
+            gz=$(find _restore -name "*.gz" | head -1)
+            if [ -n "$gz" ]; then
+              gunzip -c "$gz" > datos/music_cache.json
+              echo "Restored: $(ls -lh datos/music_cache.json | awk '{print $5}')"
+            fi
+          else
+            echo "::warning::No se pudo bajar el artifact — uso el del checkout"
+          fi
+          rm -rf _restore
+
       - name: Write .Renviron from secrets
         run: |
           cat > .Renviron <<EOF
