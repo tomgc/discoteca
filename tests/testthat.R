@@ -1,5 +1,5 @@
 source(here::here("utils.R"))
-instalar_si_falta("testthat")
+instalar_si_falta(c("testthat", "withr"))
 
 library(testthat)
 library(here)
