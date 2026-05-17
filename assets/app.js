@@ -235,6 +235,39 @@ function setUrlAlbum(id) {
   if (id) url.searchParams.set('album', id);
   else url.searchParams.delete('album');
   history.replaceState(null, '', url.toString());
+  updateMetadata(id ? catalogo.find(a => a.id === id) : null);
+}
+
+// Actualiza <title> y meta tags OG/Twitter al abrir/cerrar álbum.
+// Solo es visible para scrapers que ejecutan JS (Slack, Discord, Telegram).
+function updateMetadata(album) {
+  const setMeta = (selector, value) => {
+    const el = document.querySelector(selector);
+    if (el) el.setAttribute(el.hasAttribute('property') ? 'content' : 'content', value);
+  };
+
+  if (album) {
+    const title = `${album.album} — ${album.artista} · Discoteca`;
+    const desc  = [album.anio, album.sello, album.generos?.slice(0, 3).join(', ')]
+                    .filter(Boolean).join(' · ') || 'Personal record collection';
+    document.title = title;
+    setMeta('meta[property="og:title"]',       title);
+    setMeta('meta[property="og:description"]', desc);
+    setMeta('meta[property="og:image"]',       album.artwork_url || '');
+    setMeta('meta[property="og:url"]',         window.location.href);
+    setMeta('meta[name="twitter:title"]',      title);
+    setMeta('meta[name="twitter:description"]',desc);
+    setMeta('meta[name="twitter:image"]',      album.artwork_url || '');
+  } else {
+    document.title = 'Discoteca';
+    setMeta('meta[property="og:title"]',       'Discoteca');
+    setMeta('meta[property="og:description"]', 'Personal record collection');
+    setMeta('meta[property="og:image"]',       'https://tomgc.github.io/discoteca/assets/icon.svg');
+    setMeta('meta[property="og:url"]',         'https://tomgc.github.io/discoteca/');
+    setMeta('meta[name="twitter:title"]',      'Discoteca');
+    setMeta('meta[name="twitter:description"]','Personal record collection');
+    setMeta('meta[name="twitter:image"]',      'https://tomgc.github.io/discoteca/assets/icon.svg');
+  }
 }
 
 window.addEventListener('popstate', () => {
