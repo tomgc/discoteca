@@ -128,11 +128,12 @@ main <- function() {
 
   for (k in keys) {
     entry <- cache$albumes[[k]]
-    cat <- entry$personal$categoria %||% ""
-    if (cat != "masterpiece") next
+    # safe_str maneja NULL, NA, list() y character(0) — todos los formatos
+    # en que jsonlite puede serializar un campo opcional.
+    if (safe_str(entry$personal$categoria) != "masterpiece") next
     total_master <- total_master + 1
 
-    if (!is.null(entry$wikipedia$extract) && nchar(entry$wikipedia$extract) > 0) {
+    if (nchar(safe_str(entry$wikipedia$extract)) > 0) {
       ya_tiene <- ya_tiene + 1
       next
     }
