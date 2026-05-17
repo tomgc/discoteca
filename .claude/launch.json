@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "discoteca",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "4323", "--directory", "/Users/tomgc/Projects/discoteca"],
+      "port": 4323
+    }
+  ]
+}
