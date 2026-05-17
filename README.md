@@ -54,7 +54,7 @@ Spotify keeps my saved albums but doesn't let me organize them my way. Last.fm l
 ├── datos/
 │   ├── catalogo.json           ← Album data for the frontend (sorted keys)
 │   ├── catalogo_musica.csv     ← Same data in CSV for R/Excel
-│   ├── music_cache.json        ← Permanent cache (~1.6MB, tracked for CI)
+│   ├── music_cache.json        ← Permanent cache (~1.6MB, NOT tracked — see "Local cache" below)
 │   ├── correcciones_mb.json    ← Manual MusicBrainz corrections
 │   └── ediciones_web.json      ← Personal edits exported from the web
 │
@@ -110,6 +110,16 @@ Rscript run_all.R --dedup            # include deduplication
 ```
 
 The first run takes ~70 min (1375 albums × 3 req/s through MusicBrainz). Subsequent runs only process new albums (cache is incremental).
+
+### Local cache
+
+`datos/music_cache.json` is the permanent, append-only cache (~1.6MB). It's **not tracked** in the repo. The pipeline generates and updates it locally. If you lose your local copy:
+
+```bash
+Rscript restaurar_cache.R   # downloads latest cache from CI artifacts
+```
+
+CI restores it automatically from the most recent successful run's artifact before each run.
 
 ### 3. Run tests (optional, after changing `utils.R`)
 
