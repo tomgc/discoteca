@@ -6,5 +6,10 @@
       "Bash(Rscript importar_ediciones.R:*)",
       "Bash(Rscript restaurar_cache.R:*)"
     ]
+  },
+  "attribution": {
+    "commit": "",
+    "pr": "",
+    "sessionUrl": false
   }
 }
